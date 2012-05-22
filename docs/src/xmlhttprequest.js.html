@@ -1,0 +1,234 @@
+<!DOCTYPE html><html><head><title>xmlhttprequest.js</title><meta http-equiv="Content-Type" content="text/html" charset="UTF-8"><link rel="stylesheet" media="all" href="../docco.css"></head><body><div id="container"><div id="background"></div><div id="jump_to">Jump To &hellip;<div id="jump_wrapper"><div id="jump_page"><a href="../index.html" class="source"><span class="file_name">README</span></a><a href="../src/dommr.js.html" class="source "><span class="base_path">src / </span><span class="file_name">dommr.js</span></a><a href="../src/file.js.html" class="source "><span class="base_path">src / </span><span class="file_name">file.js</span></a><a href="../src/script.js.html" class="source "><span class="base_path">src / </span><span class="file_name">script.js</span></a><a href="../src/session/client-session.js.html" class="source "><span class="base_path">src / session / </span><span class="file_name">client-session.js</span></a><a href="../src/session/provider.js.html" class="source "><span class="base_path">src / session / </span><span class="file_name">provider.js</span></a><a href="../src/session/session.js.html" class="source "><span class="base_path">src / session / </span><span class="file_name">session.js</span></a><a href="../src/stylesheet.js.html" class="source "><span class="base_path">src / </span><span class="file_name">stylesheet.js</span></a><a href="../src/template/client-template.js.html" class="source "><span class="base_path">src / template / </span><span class="file_name">client-template.js</span></a><a href="../src/template/provider.js.html" class="source "><span class="base_path">src / template / </span><span class="file_name">provider.js</span></a><a href="../src/template.js.html" class="source "><span class="base_path">src / </span><span class="file_name">template.js</span></a><a href="../src/xmlhttprequest.js.html" class="source selected"><span class="base_path">src / </span><span class="file_name">xmlhttprequest.js</span></a></div></div></div><table cellpadding="0" cellspacing="0"><thead><tr><th class="docs"><h1>xmlhttprequest.js</h1><div class="filepath">src/</div></th><th class="code"></th></tr></thead><tbody><tr id="section-1"><td class="docs"><div class="pilwrap"><a href="#section-1" class="pilcrow">&#182;</a></div>
+</td><td class="code"><div class="highlight"><pre></pre></div></td></tr><tr id="section-2"><td class="docs"><div class="pilwrap"><a href="#section-2" class="pilcrow">&#182;</a></div><div class="dox"><div class="summary"><h2>A heavily modified version of</h2></div><div class="details"></div><div class="body"><p>Wrapper for built-in http.js to emulate the browser XMLHttpRequest object.</p>
+
+<p>This can be used with JS designed for browsers to improve reuse of code and<br />allow the use of existing libraries.</p>
+
+<p>Usage: include("XMLHttpRequest.js") and use XMLHttpRequest per W3C specs.</p></div></div>
+</td><td class="code"><div class="highlight"><pre><span class="kd">var</span> <span class="nx">Url</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;url&#39;</span><span class="p">),</span>
+    <span class="nx">http</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;http&#39;</span><span class="p">),</span>
+    <span class="nx">https</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;https&#39;</span><span class="p">),</span>
+    <span class="nx">events</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;events&#39;</span><span class="p">),</span>
+    <span class="nx">util</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;util&#39;</span><span class="p">),</span>
+    <span class="nx">zlib</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;zlib&#39;</span><span class="p">);</span>
+
+
+
+
+<span class="kd">function</span> <span class="nx">XMLHttpRequest</span><span class="p">()</span> <span class="p">{</span></pre></div></td></tr><tr id="section-3"><td class="docs"><div class="pilwrap"><a href="#section-3" class="pilcrow">&#182;</a></div><p>Current state</p>
+</td><td class="code"><div class="highlight"><pre>   <span class="k">this</span><span class="p">.</span><span class="nx">readyState</span> <span class="o">=</span> <span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">UNSENT</span><span class="p">;</span></pre></div></td></tr><tr id="section-4"><td class="docs"><div class="pilwrap"><a href="#section-4" class="pilcrow">&#182;</a></div><p>default ready state change handler in case one is not set or is set late</p>
+</td><td class="code"><div class="highlight"><pre>   <span class="k">this</span><span class="p">.</span><span class="nx">onreadystatechange</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span></pre></div></td></tr><tr id="section-5"><td class="docs"><div class="pilwrap"><a href="#section-5" class="pilcrow">&#182;</a></div><p>Result &amp; response</p>
+</td><td class="code"><div class="highlight"><pre>   <span class="k">this</span><span class="p">.</span><span class="nx">response</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">responseText</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">;</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">responseXML</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">;</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">status</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">statusText</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span>
+
+   <span class="k">this</span><span class="p">.</span><span class="nx">url</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="nx">util</span><span class="p">.</span><span class="nx">inherits</span><span class="p">(</span><span class="nx">XMLHttpRequest</span><span class="p">,</span> <span class="nx">events</span><span class="p">.</span><span class="nx">EventEmitter</span><span class="p">);</span>
+
+
+<span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">UNSENT</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">OPENED</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">HEADERS_RECEIVED</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+<span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">LOADING</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+<span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">DONE</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>
+
+<span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">default_headers</span> <span class="o">=</span> <span class="p">{</span>
+   <span class="s2">&quot;User-Agent&quot;</span><span class="o">:</span> <span class="s2">&quot;node.js&quot;</span><span class="p">,</span>
+   <span class="s2">&quot;Accept&quot;</span><span class="o">:</span> <span class="s2">&quot;*/*&quot;</span><span class="p">,</span>
+<span class="p">};</span>
+
+
+
+      </pre></div></td></tr><tr id="section-6"><td class="docs"><div class="pilwrap"><a href="#section-6" class="pilcrow">&#182;</a></div><div class="dox"><div class="summary"><p>Open the connection. Currently supports local server requests.</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span>method </span><span class="dox_type">string</span><span>- Connection method (eg GET, POST)</span></div><div class="dox_tag_detail"><span>url </span><span class="dox_type">string</span><span>- URL for the connection.</span></div><div class="dox_tag_detail"><span>async </span><span class="dox_type">boolean</span><span>- Asynchronous connection. Default is true.</span></div><div class="dox_tag_detail"><span>user </span><span class="dox_type">string</span><span>- Username for basic authentication (optional)</span></div><div class="dox_tag_detail"><span>password </span><span class="dox_type">string</span><span>- Password for basic authentication (optional)</span></div></div><div class="body"></div></div>
+</td><td class="code"><div class="highlight"><pre><span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">open</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">method</span><span class="p">,</span> <span class="nx">url</span><span class="p">,</span> <span class="nx">async</span><span class="p">,</span> <span class="nx">user</span><span class="p">,</span> <span class="nx">password</span><span class="p">)</span> <span class="p">{</span>
+   <span class="nx">settings</span> <span class="o">=</span> <span class="p">{</span>
+      <span class="s2">&quot;method&quot;</span><span class="o">:</span> <span class="nx">method</span><span class="p">,</span>
+      <span class="s2">&quot;url&quot;</span><span class="o">:</span> <span class="nx">url</span><span class="p">,</span>
+      <span class="s2">&quot;async&quot;</span><span class="o">:</span> <span class="nx">async</span> <span class="o">||</span> <span class="kc">null</span><span class="p">,</span>
+      <span class="s2">&quot;user&quot;</span><span class="o">:</span> <span class="nx">user</span> <span class="o">||</span> <span class="kc">null</span><span class="p">,</span>
+      <span class="s2">&quot;password&quot;</span><span class="o">:</span> <span class="nx">password</span> <span class="o">||</span> <span class="kc">null</span>
+   <span class="p">};</span>
+
+   <span class="k">this</span><span class="p">.</span><span class="nx">url</span> <span class="o">=</span> <span class="nx">url</span><span class="p">;</span>
+   
+   <span class="k">this</span><span class="p">.</span><span class="nx">abort</span><span class="p">();</span>
+
+   <span class="k">this</span><span class="p">.</span><span class="nx">_set_state</span><span class="p">(</span><span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">OPENED</span><span class="p">);</span>
+<span class="p">};</span></pre></div></td></tr><tr id="section-7"><td class="docs"><div class="pilwrap"><a href="#section-7" class="pilcrow">&#182;</a></div><div class="dox"><div class="summary"><p>Sets a header for the request.</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span>header </span><span class="dox_type">string</span><span>- Header name</span></div><div class="dox_tag_detail"><span>value </span><span class="dox_type">string</span><span>- Header value</span></div></div><div class="body"></div></div>
+</td><td class="code"><div class="highlight"><pre><span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">setRequestHeader</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">header</span><span class="p">,</span> <span class="nx">value</span><span class="p">)</span> <span class="p">{</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">headers</span><span class="p">[</span><span class="nx">header</span><span class="p">]</span> <span class="o">=</span> <span class="nx">value</span><span class="p">;</span>
+<span class="p">};</span></pre></div></td></tr><tr id="section-8"><td class="docs"><div class="pilwrap"><a href="#section-8" class="pilcrow">&#182;</a></div><div class="dox"><div class="summary"><p>Gets a header from the server response.</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span>header </span><span class="dox_type">string</span><span>- Name of header to get.</span></div><div class="dox_tag_title">Returns</div><div class="dox_tag_detail"><span class="dox_type">string</span><span>Text of the header or null if it doesn't exist.</span></div></div><div class="body"></div></div>
+</td><td class="code"><div class="highlight"><pre><span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">getResponseHeader</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">header</span><span class="p">)</span> <span class="p">{</span>
+   <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">readyState</span> <span class="o">&gt;</span> <span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">OPENED</span> <span class="o">&amp;&amp;</span> <span class="k">this</span><span class="p">.</span><span class="nx">response</span><span class="p">.</span><span class="nx">headers</span><span class="p">[</span><span class="nx">header</span><span class="p">])</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="nx">header</span> <span class="o">+</span> <span class="s2">&quot;: &quot;</span> <span class="o">+</span> <span class="k">this</span><span class="p">.</span><span class="nx">response</span><span class="p">.</span><span class="nx">headers</span><span class="p">[</span><span class="nx">header</span><span class="p">];</span>
+   <span class="p">}</span>
+   
+   <span class="k">return</span> <span class="kc">null</span><span class="p">;</span>
+<span class="p">};</span></pre></div></td></tr><tr id="section-9"><td class="docs"><div class="pilwrap"><a href="#section-9" class="pilcrow">&#182;</a></div><div class="dox"><div class="summary"><p>Gets all the response headers.</p></div><div class="details"><div class="dox_tag_title">Returns</div><div class="dox_tag_detail"><span class="dox_type">string</span></div></div><div class="body"></div></div>
+</td><td class="code"><div class="highlight"><pre><span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">getAllResponseHeaders</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+   <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">readyState</span> <span class="o">&lt;</span> <span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">HEADERS_RECEIVED</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">throw</span> <span class="s2">&quot;INVALID_STATE_ERR: Headers have not been received.&quot;</span><span class="p">;</span>
+   <span class="p">}</span>
+   <span class="kd">var</span> <span class="nx">result</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">;</span>
+   
+   <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="k">in</span> <span class="k">this</span><span class="p">.</span><span class="nx">response</span><span class="p">.</span><span class="nx">headers</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">result</span> <span class="o">+=</span> <span class="nx">i</span> <span class="o">+</span> <span class="s2">&quot;: &quot;</span> <span class="o">+</span> <span class="k">this</span><span class="p">.</span><span class="nx">response</span><span class="p">.</span><span class="nx">headers</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;\r\n&quot;</span><span class="p">;</span>
+   <span class="p">}</span>
+   <span class="k">return</span> <span class="nx">result</span><span class="p">.</span><span class="nx">substr</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nx">result</span><span class="p">.</span><span class="nx">length</span> <span class="o">-</span> <span class="mi">2</span><span class="p">);</span>
+<span class="p">};</span></pre></div></td></tr><tr id="section-10"><td class="docs"><div class="pilwrap"><a href="#section-10" class="pilcrow">&#182;</a></div><div class="dox"><div class="summary"><p>Sends the request to the server.</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span>data </span><span class="dox_type">string</span><span>- Optional data to send as request body.</span></div></div><div class="body"></div></div>
+</td><td class="code"><div class="highlight"><pre><span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">send</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span>
+   <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">readyState</span> <span class="o">!=</span> <span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">OPENED</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">throw</span> <span class="s2">&quot;INVALID_STATE_ERR: connection must be opened before send() is called&quot;</span><span class="p">;</span>
+   <span class="p">}</span>
+   
+   <span class="kd">var</span> <span class="nx">ssl</span> <span class="o">=</span> <span class="kc">false</span><span class="p">;</span>
+   <span class="kd">var</span> <span class="nx">url</span> <span class="o">=</span> <span class="nx">Url</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">settings</span><span class="p">.</span><span class="nx">url</span><span class="p">);</span>
+   </pre></div></td></tr><tr id="section-11"><td class="docs"><div class="pilwrap"><a href="#section-11" class="pilcrow">&#182;</a></div><p>Determine the server</p>
+</td><td class="code"><div class="highlight"><pre>   <span class="k">switch</span> <span class="p">(</span><span class="nx">url</span><span class="p">.</span><span class="nx">protocol</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">case</span> <span class="s1">&#39;https:&#39;</span><span class="o">:</span>
+         <span class="nx">ssl</span> <span class="o">=</span> <span class="kc">true</span><span class="p">;</span></pre></div></td></tr><tr id="section-12"><td class="docs"><div class="pilwrap"><a href="#section-12" class="pilcrow">&#182;</a></div><p>SSL &amp; non-SSL both need host, no break here.</p>
+</td><td class="code"><div class="highlight"><pre>      <span class="k">case</span> <span class="s1">&#39;http:&#39;</span><span class="o">:</span>
+         <span class="kd">var</span> <span class="nx">host</span> <span class="o">=</span> <span class="nx">url</span><span class="p">.</span><span class="nx">hostname</span><span class="p">;</span>
+         <span class="k">break</span><span class="p">;</span>
+      
+      <span class="k">case</span> <span class="kc">undefined</span><span class="o">:</span>
+      <span class="k">case</span> <span class="s1">&#39;&#39;</span><span class="o">:</span>
+         <span class="kd">var</span> <span class="nx">host</span> <span class="o">=</span> <span class="s2">&quot;localhost&quot;</span><span class="p">;</span>
+         <span class="k">break</span><span class="p">;</span>
+      
+      <span class="k">default</span><span class="o">:</span>
+         <span class="k">throw</span> <span class="s2">&quot;Protocol not supported.&quot;</span><span class="p">;</span>
+   <span class="p">}</span></pre></div></td></tr><tr id="section-13"><td class="docs"><div class="pilwrap"><a href="#section-13" class="pilcrow">&#182;</a></div><p>Default to port 80. If accessing localhost on another port be sure
+to use http://localhost:port/path</p>
+</td><td class="code"><div class="highlight"><pre>   <span class="kd">var</span> <span class="nx">port</span> <span class="o">=</span> <span class="nx">url</span><span class="p">.</span><span class="nx">port</span> <span class="o">||</span> <span class="p">(</span><span class="nx">ssl</span> <span class="o">?</span> <span class="mi">443</span> <span class="o">:</span> <span class="mi">80</span><span class="p">);</span></pre></div></td></tr><tr id="section-14"><td class="docs"><div class="pilwrap"><a href="#section-14" class="pilcrow">&#182;</a></div><p>Add query string if one is used</p>
+</td><td class="code"><div class="highlight"><pre>   <span class="kd">var</span> <span class="nx">uri</span> <span class="o">=</span> <span class="nx">url</span><span class="p">.</span><span class="nx">pathname</span> <span class="o">+</span> <span class="p">(</span><span class="nx">url</span><span class="p">.</span><span class="nx">search</span> <span class="o">?</span> <span class="nx">url</span><span class="p">.</span><span class="nx">search</span> <span class="o">:</span> <span class="s1">&#39;&#39;</span><span class="p">);</span>
+   </pre></div></td></tr><tr id="section-15"><td class="docs"><div class="pilwrap"><a href="#section-15" class="pilcrow">&#182;</a></div><p>Set the Host header or the server may reject the request</p>
+</td><td class="code"><div class="highlight"><pre>   <span class="k">this</span><span class="p">.</span><span class="nx">setRequestHeader</span><span class="p">(</span><span class="s2">&quot;Host&quot;</span><span class="p">,</span> <span class="nx">host</span><span class="p">);</span></pre></div></td></tr><tr id="section-16"><td class="docs"><div class="pilwrap"><a href="#section-16" class="pilcrow">&#182;</a></div><p>Set Basic Auth if necessary</p>
+</td><td class="code"><div class="highlight"><pre>   <span class="k">if</span> <span class="p">(</span><span class="nx">settings</span><span class="p">.</span><span class="nx">user</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="k">typeof</span> <span class="nx">settings</span><span class="p">.</span><span class="nx">password</span> <span class="o">==</span> <span class="s2">&quot;undefined&quot;</span><span class="p">)</span> <span class="p">{</span>
+         <span class="nx">settings</span><span class="p">.</span><span class="nx">password</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="kd">var</span> <span class="nx">authBuf</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Buffer</span><span class="p">(</span><span class="nx">settings</span><span class="p">.</span><span class="nx">user</span> <span class="o">+</span> <span class="s2">&quot;:&quot;</span> <span class="o">+</span> <span class="nx">settings</span><span class="p">.</span><span class="nx">password</span><span class="p">);</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">headers</span><span class="p">[</span><span class="s2">&quot;Authorization&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Basic &quot;</span> <span class="o">+</span> <span class="nx">authBuf</span><span class="p">.</span><span class="nx">toString</span><span class="p">(</span><span class="s2">&quot;base64&quot;</span><span class="p">);</span>
+   <span class="p">}</span>
+   </pre></div></td></tr><tr id="section-17"><td class="docs"><div class="pilwrap"><a href="#section-17" class="pilcrow">&#182;</a></div><p>Set content length header</p>
+</td><td class="code"><div class="highlight"><pre>   <span class="k">if</span> <span class="p">(</span><span class="nx">settings</span><span class="p">.</span><span class="nx">method</span> <span class="o">==</span> <span class="s2">&quot;GET&quot;</span> <span class="o">||</span> <span class="nx">settings</span><span class="p">.</span><span class="nx">method</span> <span class="o">==</span> <span class="s2">&quot;HEAD&quot;</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">data</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span>
+   <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">setRequestHeader</span><span class="p">(</span><span class="s2">&quot;Content-Length&quot;</span><span class="p">,</span> <span class="nx">Buffer</span><span class="p">.</span><span class="nx">byteLength</span><span class="p">(</span><span class="nx">data</span><span class="p">));</span>
+      
+      <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="k">this</span><span class="p">.</span><span class="nx">headers</span><span class="p">[</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">])</span> <span class="p">{</span>
+         <span class="k">this</span><span class="p">.</span><span class="nx">setRequestHeader</span><span class="p">(</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">,</span> <span class="s2">&quot;text/plain;charset=UTF-8&quot;</span><span class="p">);</span>
+      <span class="p">}</span>
+   <span class="p">}</span>
+
+   <span class="kd">var</span> <span class="nx">options</span> <span class="o">=</span> <span class="p">{</span>
+      <span class="nx">host</span><span class="o">:</span> <span class="nx">host</span><span class="p">,</span>
+      <span class="nx">port</span><span class="o">:</span> <span class="nx">port</span><span class="p">,</span>
+      <span class="nx">path</span><span class="o">:</span> <span class="nx">uri</span><span class="p">,</span>
+      <span class="nx">method</span><span class="o">:</span> <span class="nx">settings</span><span class="p">.</span><span class="nx">method</span><span class="p">,</span>
+      <span class="nx">headers</span><span class="o">:</span> <span class="k">this</span><span class="p">.</span><span class="nx">headers</span>
+   <span class="p">};</span>
+
+   <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="nx">settings</span><span class="p">.</span><span class="nx">hasOwnProperty</span><span class="p">(</span><span class="s2">&quot;async&quot;</span><span class="p">)</span> <span class="o">||</span> <span class="nx">settings</span><span class="p">.</span><span class="nx">async</span><span class="p">)</span> <span class="p">{</span> <span class="c1">//Normal async path</span></pre></div></td></tr><tr id="section-18"><td class="docs"><div class="pilwrap"><a href="#section-18" class="pilcrow">&#182;</a></div><p>Use the proper protocol</p>
+</td><td class="code"><div class="highlight"><pre>      <span class="kd">var</span> <span class="nx">doRequest</span> <span class="o">=</span> <span class="nx">ssl</span> <span class="o">?</span> <span class="nx">https</span><span class="p">.</span><span class="nx">request</span> <span class="o">:</span> <span class="nx">http</span><span class="p">.</span><span class="nx">request</span><span class="p">;</span>
+
+      <span class="kd">var</span> <span class="nx">req</span> <span class="o">=</span> <span class="nx">doRequest</span><span class="p">(</span><span class="nx">options</span><span class="p">,</span> <span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">response</span><span class="p">)</span> <span class="p">{</span>
+         <span class="kd">var</span> <span class="nx">stream</span><span class="p">;</span>
+
+         <span class="k">this</span><span class="p">.</span><span class="nx">_set_state</span><span class="p">(</span><span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">HEADERS_RECEIVED</span><span class="p">);</span>
+         <span class="k">this</span><span class="p">.</span><span class="nx">status</span> <span class="o">=</span> <span class="nx">response</span><span class="p">.</span><span class="nx">statusCode</span><span class="p">;</span>
+         <span class="k">this</span><span class="p">.</span><span class="nx">response</span> <span class="o">=</span> <span class="nx">response</span><span class="p">;</span>
+         
+         <span class="k">switch</span> <span class="p">(</span><span class="nx">response</span><span class="p">.</span><span class="nx">headers</span><span class="p">[</span><span class="s1">&#39;content-encoding&#39;</span><span class="p">])</span> <span class="p">{</span>
+            <span class="k">case</span> <span class="s1">&#39;gzip&#39;</span><span class="o">:</span>
+              <span class="nx">stream</span> <span class="o">=</span> <span class="nx">response</span><span class="p">.</span><span class="nx">pipe</span><span class="p">(</span><span class="nx">zlib</span><span class="p">.</span><span class="nx">createGunzip</span><span class="p">());</span>
+              <span class="k">break</span><span class="p">;</span>
+            <span class="k">case</span> <span class="s1">&#39;deflate&#39;</span><span class="o">:</span>
+              <span class="nx">stream</span> <span class="o">=</span> <span class="nx">response</span><span class="p">.</span><span class="nx">pipe</span><span class="p">(</span><span class="nx">zlib</span><span class="p">.</span><span class="nx">createInflate</span><span class="p">());</span>
+              <span class="k">break</span><span class="p">;</span>
+            <span class="k">default</span><span class="o">:</span>
+              <span class="nx">stream</span> <span class="o">=</span> <span class="nx">response</span><span class="p">;</span>
+              <span class="k">break</span><span class="p">;</span>
+         <span class="p">}</span>
+
+         <span class="nx">stream</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;data&#39;</span><span class="p">,</span> <span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">chunk</span><span class="p">)</span> <span class="p">{</span></pre></div></td></tr><tr id="section-19"><td class="docs"><div class="pilwrap"><a href="#section-19" class="pilcrow">&#182;</a></div><p>Make sure there's some data</p>
+</td><td class="code"><div class="highlight"><pre>            <span class="k">if</span> <span class="p">(</span><span class="nx">chunk</span><span class="p">)</span> <span class="p">{</span>
+               <span class="k">this</span><span class="p">.</span><span class="nx">responseText</span> <span class="o">+=</span> <span class="nx">chunk</span><span class="p">.</span><span class="nx">toString</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">);;</span>
+            <span class="p">}</span>
+
+            <span class="k">this</span><span class="p">.</span><span class="nx">_set_state</span><span class="p">(</span><span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">LOADING</span><span class="p">);</span>
+         <span class="p">}).</span><span class="nx">bind</span><span class="p">(</span><span class="k">this</span><span class="p">));</span>
+         
+         <span class="nx">stream</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;end&#39;</span><span class="p">,</span> <span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+            <span class="k">this</span><span class="p">.</span><span class="nx">_set_state</span><span class="p">(</span><span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">DONE</span><span class="p">);</span>
+         <span class="p">}).</span><span class="nx">bind</span><span class="p">(</span><span class="k">this</span><span class="p">));</span>
+         
+         <span class="nx">stream</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;error&#39;</span><span class="p">,</span> <span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">error</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">this</span><span class="p">.</span><span class="nx">handleError</span><span class="p">(</span><span class="nx">error</span><span class="p">);</span>
+         <span class="p">}).</span><span class="nx">bind</span><span class="p">(</span><span class="k">this</span><span class="p">));</span>
+      <span class="p">}).</span><span class="nx">bind</span><span class="p">(</span><span class="k">this</span><span class="p">)).</span><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;error&#39;</span><span class="p">,</span> <span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">error</span><span class="p">)</span> <span class="p">{</span>
+         <span class="k">this</span><span class="p">.</span><span class="nx">handleError</span><span class="p">(</span><span class="nx">error</span><span class="p">);</span>
+      <span class="p">}).</span><span class="nx">bind</span><span class="p">(</span><span class="k">this</span><span class="p">));</span>
+      </pre></div></td></tr><tr id="section-20"><td class="docs"><div class="pilwrap"><a href="#section-20" class="pilcrow">&#182;</a></div><p>Node 0.4 and later won't accept empty data. Make sure it's needed.</p>
+</td><td class="code"><div class="highlight"><pre>      <span class="k">if</span> <span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span>
+         <span class="nx">req</span><span class="p">.</span><span class="nx">write</span><span class="p">(</span><span class="nx">data</span><span class="p">);</span>
+      <span class="p">}</span>
+
+      <span class="nx">req</span><span class="p">.</span><span class="nx">end</span><span class="p">();</span>
+   <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s2">&quot;Cannot run a synchronos xhr on the server&quot;</span><span class="p">);</span>
+   <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">handleError</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">error</span><span class="p">)</span> <span class="p">{</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">status</span> <span class="o">=</span> <span class="mi">503</span><span class="p">;</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">statusText</span> <span class="o">=</span> <span class="nx">error</span><span class="p">;</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">responseText</span> <span class="o">=</span> <span class="nx">error</span><span class="p">.</span><span class="nx">stack</span><span class="p">;</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_set_state</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">DONE</span><span class="p">);</span>
+<span class="p">};</span></pre></div></td></tr><tr id="section-21"><td class="docs"><div class="pilwrap"><a href="#section-21" class="pilcrow">&#182;</a></div><div class="dox"><div class="summary"><p>Aborts a request.</p></div><div class="body"></div></div>
+</td><td class="code"><div class="highlight"><pre><span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">abort</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">headers</span> <span class="o">=</span> <span class="p">{</span>  <span class="p">};</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">readyState</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">UNSENT</span><span class="p">;</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">responseText</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">;</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">responseXML</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">;</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">response</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span>
+<span class="p">};</span>
+
+
+<span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_set_state</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">state</span><span class="p">)</span> <span class="p">{</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">readyState</span> <span class="o">=</span> <span class="nx">state</span><span class="p">;</span>
+   <span class="k">if</span> <span class="p">(</span><span class="k">typeof</span> <span class="k">this</span><span class="p">.</span><span class="nx">onreadystatechange</span> <span class="o">===</span> <span class="s2">&quot;function&quot;</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">onreadystatechange</span><span class="p">();</span>
+   <span class="p">}</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_report</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="nx">state</span><span class="p">);</span>
+<span class="p">};</span>
+
+
+<span class="nx">XMLHttpRequest</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_report</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">xhr</span><span class="p">,</span> <span class="nx">state</span><span class="p">)</span> <span class="p">{</span>
+   <span class="k">switch</span> <span class="p">(</span><span class="nx">state</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">case</span> <span class="mi">1</span><span class="o">:</span> <span class="c1">// xhr opened</span>
+         <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;+ &#39;</span> <span class="o">+</span> <span class="nx">xhr</span><span class="p">.</span><span class="nx">url</span><span class="p">);</span>
+
+         <span class="k">this</span><span class="p">.</span><span class="nx">emit</span><span class="p">(</span><span class="s1">&#39;working&#39;</span><span class="p">);</span>
+
+         <span class="k">break</span><span class="p">;</span>
+
+      <span class="k">case</span> <span class="mi">4</span><span class="o">:</span> <span class="c1">// xhr done</span>
+         <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;- &#39;</span> <span class="o">+</span> <span class="nx">xhr</span><span class="p">.</span><span class="nx">url</span><span class="p">);</span>
+
+         <span class="k">this</span><span class="p">.</span><span class="nx">emit</span><span class="p">(</span><span class="s1">&#39;done&#39;</span><span class="p">);</span>
+
+         <span class="k">break</span><span class="p">;</span>
+   <span class="p">}</span>
+<span class="p">}</span>
+
+
+
+<span class="nx">module</span><span class="p">.</span><span class="nx">exports</span> <span class="o">=</span> <span class="nx">XMLHttpRequest</span><span class="p">;</span>
+
+</pre></div></td></tr></tbody></table><div id="generated">generated Wed May 23 2012 00:50:07 GMT+0100 (BST)  </div></div></body></html>

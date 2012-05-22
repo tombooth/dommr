@@ -1,0 +1,60 @@
+<!DOCTYPE html><html><head><title>session.js</title><meta http-equiv="Content-Type" content="text/html" charset="UTF-8"><link rel="stylesheet" media="all" href="../../docco.css"></head><body><div id="container"><div id="background"></div><div id="jump_to">Jump To &hellip;<div id="jump_wrapper"><div id="jump_page"><a href="../../index.html" class="source"><span class="file_name">README</span></a><a href="../../src/dommr.js.html" class="source "><span class="base_path">src / </span><span class="file_name">dommr.js</span></a><a href="../../src/file.js.html" class="source "><span class="base_path">src / </span><span class="file_name">file.js</span></a><a href="../../src/script.js.html" class="source "><span class="base_path">src / </span><span class="file_name">script.js</span></a><a href="../../src/session/client-session.js.html" class="source "><span class="base_path">src / session / </span><span class="file_name">client-session.js</span></a><a href="../../src/session/provider.js.html" class="source "><span class="base_path">src / session / </span><span class="file_name">provider.js</span></a><a href="../../src/session/session.js.html" class="source selected"><span class="base_path">src / session / </span><span class="file_name">session.js</span></a><a href="../../src/stylesheet.js.html" class="source "><span class="base_path">src / </span><span class="file_name">stylesheet.js</span></a><a href="../../src/template/client-template.js.html" class="source "><span class="base_path">src / template / </span><span class="file_name">client-template.js</span></a><a href="../../src/template/provider.js.html" class="source "><span class="base_path">src / template / </span><span class="file_name">provider.js</span></a><a href="../../src/template.js.html" class="source "><span class="base_path">src / </span><span class="file_name">template.js</span></a><a href="../../src/xmlhttprequest.js.html" class="source "><span class="base_path">src / </span><span class="file_name">xmlhttprequest.js</span></a></div></div></div><table cellpadding="0" cellspacing="0"><thead><tr><th class="docs"><h1>session.js</h1><div class="filepath">src/session/</div></th><th class="code"></th></tr></thead><tbody><tr id="section-1"><td class="docs"><div class="pilwrap"><a href="#section-1" class="pilcrow">&#182;</a></div>
+</td><td class="code"><div class="highlight"><pre></pre></div></td></tr><tr id="section-2"><td class="docs"><div class="pilwrap"><a href="#section-2" class="pilcrow">&#182;</a></div><div class="dox"><div class="summary"><p>This is the server side implmentation of the window.session object.<br />It is used by domesetique when a request is made as well as when<br />a session update request comes in from the client.</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span>id </span><span class="dox_type">String</span><span>- the id for the session</span></div><div class="dox_tag_detail"><span>client </span><span class="dox_type">memcached</span><span>- memcached client used for persisting the session store</span></div><div class="dox_tag_detail"><span>expiry </span><span class="dox_type">Number</span><span>- session expiry time in seconds until 30 days worth</span></div></div><div class="body"></div></div>
+</td><td class="code"><div class="highlight"><pre><span class="kd">function</span> <span class="nx">Session</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span> <span class="nx">client</span><span class="p">,</span> <span class="nx">expiry</span><span class="p">)</span> <span class="p">{</span>
+
+   <span class="k">this</span><span class="p">.</span><span class="nx">_id</span> <span class="o">=</span> <span class="nx">id</span><span class="p">;</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_client</span> <span class="o">=</span> <span class="nx">client</span><span class="p">;</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_expiry</span> <span class="o">=</span> <span class="nx">expiry</span><span class="p">;</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_data</span> <span class="o">=</span> <span class="p">{</span> <span class="p">};</span>
+
+<span class="p">}</span>
+
+
+<span class="nx">require</span><span class="p">(</span><span class="s1">&#39;util&#39;</span><span class="p">).</span><span class="nx">inherits</span><span class="p">(</span><span class="nx">Session</span><span class="p">,</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;events&#39;</span><span class="p">).</span><span class="nx">EventEmitter</span><span class="p">);</span>
+
+
+<span class="nx">Session</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">get</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">key</span><span class="p">)</span> <span class="p">{</span>
+   <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">_data</span><span class="p">[</span><span class="nx">key</span><span class="p">];</span>
+<span class="p">};</span>
+
+<span class="nx">Session</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">set</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">key</span><span class="p">,</span> <span class="nx">value</span><span class="p">)</span> <span class="p">{</span>
+
+   <span class="k">if</span> <span class="p">(</span><span class="k">typeof</span> <span class="nx">key</span> <span class="o">===</span> <span class="s1">&#39;object&#39;</span><span class="p">)</span> <span class="p">{</span>
+   <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">value</span><span class="p">)</span> <span class="p">{</span>
+   <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+   <span class="p">}</span>
+
+   <span class="k">this</span><span class="p">.</span><span class="nx">_data</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span> <span class="o">=</span> <span class="nx">value</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="nx">Session</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">del</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">key</span><span class="p">)</span> <span class="p">{</span>
+   <span class="k">delete</span> <span class="k">this</span><span class="p">.</span><span class="nx">_data</span><span class="p">[</span><span class="nx">key</span><span class="p">];</span>
+<span class="p">};</span>
+
+<span class="nx">Session</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">all</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+   <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">_data</span><span class="p">;</span>
+<span class="p">};</span>
+
+
+<span class="nx">Session</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">load</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">callback</span><span class="p">)</span> <span class="p">{</span>
+
+   <span class="k">this</span><span class="p">.</span><span class="nx">_client</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">_id</span><span class="p">,</span> <span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">session_data</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">_data</span> <span class="o">=</span> <span class="nx">session_data</span> <span class="o">||</span> <span class="p">{</span> <span class="p">};</span>
+
+      <span class="k">if</span> <span class="p">(</span><span class="nx">callback</span><span class="p">)</span> <span class="nx">callback</span><span class="p">();</span>
+   <span class="p">}).</span><span class="nx">bind</span><span class="p">(</span><span class="k">this</span><span class="p">));</span>
+
+<span class="p">};</span>
+
+<span class="nx">Session</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">save</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">callback</span><span class="p">)</span> <span class="p">{</span>
+
+   <span class="k">this</span><span class="p">.</span><span class="nx">_client</span><span class="p">.</span><span class="nx">set</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">_id</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">_data</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">_expiry</span><span class="p">,</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">callback</span><span class="p">)</span> <span class="nx">callback</span><span class="p">();</span>
+   <span class="p">});</span>
+
+<span class="p">};</span>
+
+
+<span class="nx">module</span><span class="p">.</span><span class="nx">exports</span> <span class="o">=</span> <span class="nx">Session</span><span class="p">;</span>
+
+</pre></div></td></tr></tbody></table><div id="generated">generated Wed May 23 2012 00:50:05 GMT+0100 (BST)  </div></div></body></html>

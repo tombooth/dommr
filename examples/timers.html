@@ -1,0 +1,36 @@
+
+<!DOCTYPE HTML>
+
+<html>
+   <head>
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <title>Timers</title>
+   </head>
+
+   <body>
+      <script type="text/javascript" charset="utf-8">
+
+         var short_timeout,
+             long_timeout;
+
+         short_timeout = setTimeout(function() {
+            console.log('short timeout fired');
+            clearTimeout(long_timeout);
+         }, 500);
+
+         long_timeout = setTimeout(function() {
+            console.log('long timeout should never fire');
+         }, 1000);
+
+         var n = 0,
+             interval;
+
+         interval = setInterval(function() {
+            if (++n === 3) { clearInterval(interval); return; }
+            console.log('run number ' + n);
+         }, 100);
+
+      </script>
+   </body>
+</html>

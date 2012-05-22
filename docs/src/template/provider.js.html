@@ -1,0 +1,143 @@
+<!DOCTYPE html><html><head><title>provider.js</title><meta http-equiv="Content-Type" content="text/html" charset="UTF-8"><link rel="stylesheet" media="all" href="../../docco.css"></head><body><div id="container"><div id="background"></div><div id="jump_to">Jump To &hellip;<div id="jump_wrapper"><div id="jump_page"><a href="../../index.html" class="source"><span class="file_name">README</span></a><a href="../../src/dommr.js.html" class="source "><span class="base_path">src / </span><span class="file_name">dommr.js</span></a><a href="../../src/file.js.html" class="source "><span class="base_path">src / </span><span class="file_name">file.js</span></a><a href="../../src/script.js.html" class="source "><span class="base_path">src / </span><span class="file_name">script.js</span></a><a href="../../src/session/client-session.js.html" class="source "><span class="base_path">src / session / </span><span class="file_name">client-session.js</span></a><a href="../../src/session/provider.js.html" class="source "><span class="base_path">src / session / </span><span class="file_name">provider.js</span></a><a href="../../src/session/session.js.html" class="source "><span class="base_path">src / session / </span><span class="file_name">session.js</span></a><a href="../../src/stylesheet.js.html" class="source "><span class="base_path">src / </span><span class="file_name">stylesheet.js</span></a><a href="../../src/template/client-template.js.html" class="source "><span class="base_path">src / template / </span><span class="file_name">client-template.js</span></a><a href="../../src/template/provider.js.html" class="source selected"><span class="base_path">src / template / </span><span class="file_name">provider.js</span></a><a href="../../src/template.js.html" class="source "><span class="base_path">src / </span><span class="file_name">template.js</span></a><a href="../../src/xmlhttprequest.js.html" class="source "><span class="base_path">src / </span><span class="file_name">xmlhttprequest.js</span></a></div></div></div><table cellpadding="0" cellspacing="0"><thead><tr><th class="docs"><h1>provider.js</h1><div class="filepath">src/template/</div></th><th class="code"></th></tr></thead><tbody><tr id="section-1"><td class="docs"><div class="pilwrap"><a href="#section-1" class="pilcrow">&#182;</a></div>
+</td><td class="code"><div class="highlight"><pre><span class="kd">var</span> <span class="nx">fs</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;fs&#39;</span><span class="p">),</span>
+    <span class="nx">path</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;path&#39;</span><span class="p">),</span>
+    <span class="nx">Script</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;../script.js&#39;</span><span class="p">);</span>
+
+
+<span class="kd">function</span> <span class="nx">TemplateProvider</span><span class="p">(</span><span class="nx">dir</span><span class="p">,</span> <span class="nx">options</span><span class="p">)</span> <span class="p">{</span>
+
+   <span class="nx">options</span> <span class="o">=</span> <span class="nx">options</span> <span class="o">||</span> <span class="p">{</span> <span class="p">};</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_ext</span> <span class="o">=</span> <span class="nx">options</span><span class="p">.</span><span class="nx">extension</span> <span class="o">||</span> <span class="k">this</span><span class="p">.</span><span class="nx">_ext</span><span class="p">;</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_namespace</span> <span class="o">=</span> <span class="nx">options</span><span class="p">.</span><span class="nx">namespace</span> <span class="o">||</span> <span class="k">this</span><span class="p">.</span><span class="nx">_namespace</span><span class="p">;</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_namespace_separator</span> <span class="o">=</span> <span class="nx">options</span><span class="p">.</span><span class="nx">namespace_separator</span> <span class="o">||</span> <span class="k">this</span><span class="p">.</span><span class="nx">_namespace_separator</span><span class="p">;</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_settings</span> <span class="o">=</span> <span class="nx">options</span><span class="p">.</span><span class="nx">settings</span> <span class="o">||</span> <span class="k">this</span><span class="p">.</span><span class="nx">_settings</span><span class="p">;</span>
+
+   <span class="k">this</span><span class="p">.</span><span class="nx">_templates</span> <span class="o">=</span> <span class="p">{</span> <span class="p">};</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_client_script</span> <span class="o">=</span> <span class="nx">fs</span><span class="p">.</span><span class="nx">readFileSync</span><span class="p">(</span><span class="nx">__dirname</span> <span class="o">+</span> <span class="s1">&#39;/client-template.js&#39;</span><span class="p">,</span> <span class="s1">&#39;utf8&#39;</span><span class="p">);</span>
+
+   <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;Loading templates...&#39;</span><span class="p">);</span>
+
+   <span class="kd">var</span> <span class="nx">parse_dir</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">_parse_template_directory</span><span class="p">.</span><span class="nx">bind</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="nx">dir</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">_namespace</span><span class="p">);</span>
+   
+   <span class="nx">parse_dir</span><span class="p">();</span>
+   <span class="nx">fs</span><span class="p">.</span><span class="nx">watchFile</span><span class="p">(</span><span class="nx">dir</span><span class="p">,</span> <span class="p">{</span> <span class="nx">interval</span><span class="o">:</span> <span class="mi">100</span> <span class="p">},</span> <span class="nx">parse_dir</span><span class="p">);</span>
+
+   <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;Done.\n&#39;</span><span class="p">);</span>
+<span class="p">}</span>
+
+
+<span class="nx">require</span><span class="p">(</span><span class="s1">&#39;util&#39;</span><span class="p">).</span><span class="nx">inherits</span><span class="p">(</span><span class="nx">TemplateProvider</span><span class="p">,</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;events&#39;</span><span class="p">).</span><span class="nx">EventEmitter</span><span class="p">);</span>
+
+
+<span class="nx">TemplateProvider</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_templates</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span>
+
+<span class="nx">TemplateProvider</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_client_script</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span>
+
+<span class="nx">TemplateProvider</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_ext</span> <span class="o">=</span> <span class="s1">&#39;.html&#39;</span><span class="p">;</span>
+
+<span class="nx">TemplateProvider</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_namespace</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">;</span>
+
+<span class="nx">TemplateProvider</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_namespace_separator</span> <span class="o">=</span> <span class="s1">&#39;:&#39;</span><span class="p">;</span>
+
+<span class="nx">TemplateProvider</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_settings</span> <span class="o">=</span> <span class="p">{</span>
+   <span class="nx">evaluate</span>    <span class="o">:</span> <span class="sr">/&lt;%([\s\S]+?)%&gt;/g</span><span class="p">,</span>
+   <span class="nx">interpolate</span> <span class="o">:</span> <span class="sr">/&lt;%=([\s\S]+?)%&gt;/g</span><span class="p">,</span>
+   <span class="nx">escape</span>      <span class="o">:</span> <span class="sr">/&lt;%-([\s\S]+?)%&gt;/g</span>
+<span class="p">};</span>
+
+
+<span class="nx">TemplateProvider</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">register</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">dommr</span><span class="p">)</span> <span class="p">{</span>
+
+   <span class="nx">dommr</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;template:scripts:pre&#39;</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">_include_templates</span><span class="p">.</span><span class="nx">bind</span><span class="p">(</span><span class="k">this</span><span class="p">));</span>
+
+   <span class="nx">dommr</span><span class="p">.</span><span class="nx">register_pre_exec</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">_attach_templates</span><span class="p">.</span><span class="nx">bind</span><span class="p">(</span><span class="k">this</span><span class="p">));</span>
+
+<span class="p">};</span>
+
+
+<span class="nx">TemplateProvider</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_parse_template_directory</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">dir</span><span class="p">,</span> <span class="nx">namespace</span><span class="p">)</span> <span class="p">{</span>
+
+   <span class="kd">var</span> <span class="nx">files</span> <span class="o">=</span> <span class="nx">fs</span><span class="p">.</span><span class="nx">readdirSync</span><span class="p">(</span><span class="nx">dir</span><span class="p">),</span>
+       <span class="nx">file</span><span class="p">,</span> <span class="nx">stat</span><span class="p">,</span> <span class="nx">filename</span><span class="p">,</span> <span class="nx">template</span><span class="p">;</span>
+
+   <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="nx">len</span> <span class="o">=</span> <span class="nx">files</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">len</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">file</span> <span class="o">=</span> <span class="nx">dir</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="nx">files</span><span class="p">[</span><span class="nx">i</span><span class="p">];</span>
+      <span class="nx">stat</span> <span class="o">=</span> <span class="nx">fs</span><span class="p">.</span><span class="nx">lstatSync</span><span class="p">(</span><span class="nx">file</span><span class="p">);</span>
+      <span class="nx">filename</span> <span class="o">=</span> <span class="nx">path</span><span class="p">.</span><span class="nx">basename</span><span class="p">(</span><span class="nx">file</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">_ext</span><span class="p">);</span>
+
+      <span class="k">if</span> <span class="p">(</span><span class="nx">stat</span><span class="p">.</span><span class="nx">isDirectory</span><span class="p">())</span> <span class="p">{</span>
+         <span class="k">this</span><span class="p">.</span><span class="nx">_parse_template_directory</span><span class="p">(</span><span class="nx">file</span><span class="p">,</span> <span class="nx">namespace</span> <span class="o">+</span> <span class="nx">filename</span> <span class="o">+</span> <span class="k">this</span><span class="p">.</span><span class="nx">_namespace_separator</span><span class="p">);</span>
+      <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">path</span><span class="p">.</span><span class="nx">extname</span><span class="p">(</span><span class="nx">file</span><span class="p">)</span> <span class="o">===</span> <span class="k">this</span><span class="p">.</span><span class="nx">_ext</span><span class="p">)</span> <span class="p">{</span>
+         <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;Template &#39;</span> <span class="o">+</span> <span class="nx">namespace</span> <span class="o">+</span> <span class="nx">filename</span> <span class="o">+</span> <span class="s1">&#39; loaded from &#39;</span> <span class="o">+</span> <span class="nx">file</span><span class="p">);</span>
+
+         <span class="nx">template</span> <span class="o">=</span> <span class="nx">fs</span><span class="p">.</span><span class="nx">readFileSync</span><span class="p">(</span><span class="nx">file</span><span class="p">).</span><span class="nx">toString</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">);</span>
+         <span class="k">this</span><span class="p">.</span><span class="nx">_templates</span><span class="p">[</span><span class="nx">namespace</span> <span class="o">+</span> <span class="nx">filename</span><span class="p">]</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">_build_template_function</span><span class="p">(</span><span class="nx">template</span><span class="p">);</span>
+      <span class="p">}</span>
+   <span class="p">}</span>
+
+<span class="p">};</span>
+
+<span class="nx">TemplateProvider</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_unescape</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">code</span><span class="p">)</span> <span class="p">{</span>
+   <span class="k">return</span> <span class="nx">code</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\\\\/g</span><span class="p">,</span> <span class="s1">&#39;\\&#39;</span><span class="p">).</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\\&#39;/g</span><span class="p">,</span> <span class="s2">&quot;&#39;&quot;</span><span class="p">);</span>
+<span class="p">};</span>
+
+<span class="nx">TemplateProvider</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_build_template_function</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">str</span><span class="p">)</span> <span class="p">{</span>
+   <span class="kd">var</span> <span class="nx">c</span>  <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">_settings</span><span class="p">,</span>
+       <span class="nx">unescape</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">_unescape</span><span class="p">,</span>
+       <span class="nx">no_match</span> <span class="o">=</span> <span class="sr">/.^/</span><span class="p">,</span>
+       <span class="nx">tmpl</span> <span class="o">=</span> <span class="s1">&#39;var __p=[],print=function(){__p.push.apply(__p,arguments);};&#39;</span> <span class="o">+</span>
+              <span class="s1">&#39;with(obj||{}){__p.push(\&#39;&#39;</span> <span class="o">+</span>
+              <span class="nx">str</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\\/g</span><span class="p">,</span> <span class="s1">&#39;\\\\&#39;</span><span class="p">)</span>
+                 <span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&#39;/g</span><span class="p">,</span> <span class="s2">&quot;\\&#39;&quot;</span><span class="p">)</span>
+                 <span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">c</span><span class="p">.</span><span class="nx">escape</span> <span class="o">||</span> <span class="nx">no_match</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">match</span><span class="p">,</span> <span class="nx">code</span><span class="p">)</span> <span class="p">{</span>
+                   <span class="k">return</span> <span class="s2">&quot;&#39;,window.template.escape(&quot;</span> <span class="o">+</span> <span class="nx">unescape</span><span class="p">(</span><span class="nx">code</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;),&#39;&quot;</span><span class="p">;</span>
+                 <span class="p">})</span>
+                 <span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">c</span><span class="p">.</span><span class="nx">interpolate</span> <span class="o">||</span> <span class="nx">no_match</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">match</span><span class="p">,</span> <span class="nx">code</span><span class="p">)</span> <span class="p">{</span>
+                   <span class="k">return</span> <span class="s2">&quot;&#39;,&quot;</span> <span class="o">+</span> <span class="nx">unescape</span><span class="p">(</span><span class="nx">code</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;,&#39;&quot;</span><span class="p">;</span>
+                 <span class="p">})</span>
+                 <span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">c</span><span class="p">.</span><span class="nx">evaluate</span> <span class="o">||</span> <span class="nx">no_match</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">match</span><span class="p">,</span> <span class="nx">code</span><span class="p">)</span> <span class="p">{</span>
+                   <span class="k">return</span> <span class="s2">&quot;&#39;);&quot;</span> <span class="o">+</span> <span class="nx">unescape</span><span class="p">(</span><span class="nx">code</span><span class="p">).</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/[\r\n\t]/g</span><span class="p">,</span> <span class="s1">&#39; &#39;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;;__p.push(&#39;&quot;</span><span class="p">;</span>
+                 <span class="p">})</span>
+                 <span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\r/g</span><span class="p">,</span> <span class="s1">&#39;\\r&#39;</span><span class="p">)</span>
+                 <span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\n/g</span><span class="p">,</span> <span class="s1">&#39;\\n&#39;</span><span class="p">)</span>
+                 <span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\t/g</span><span class="p">,</span> <span class="s1">&#39;\\t&#39;</span><span class="p">)</span>
+                 <span class="o">+</span> <span class="s2">&quot;&#39;);}return __p.join(&#39;&#39;);&quot;</span><span class="p">,</span>
+       <span class="nx">func</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Function</span><span class="p">(</span><span class="s1">&#39;obj&#39;</span><span class="p">,</span> <span class="nx">tmpl</span><span class="p">);</span>
+
+   <span class="k">return</span> <span class="nx">func</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="nx">TemplateProvider</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_attach_templates</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">request</span><span class="p">,</span> <span class="nx">done</span><span class="p">)</span> <span class="p">{</span>
+
+   <span class="nx">request</span><span class="p">.</span><span class="nb">window</span><span class="p">.</span><span class="nx">template</span> <span class="o">=</span> <span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">templates</span><span class="p">,</span> <span class="nx">id</span><span class="p">,</span> <span class="nx">data</span><span class="p">)</span> <span class="p">{</span>
+
+      <span class="k">return</span> <span class="nx">templates</span><span class="p">[</span><span class="nx">id</span><span class="p">](</span><span class="nx">data</span><span class="p">);</span>
+
+   <span class="p">}).</span><span class="nx">bind</span><span class="p">(</span><span class="kc">null</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">_templates</span><span class="p">);</span>
+
+   <span class="nx">request</span><span class="p">.</span><span class="nb">window</span><span class="p">.</span><span class="nx">template</span><span class="p">.</span><span class="nx">escape</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">string</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="p">(</span><span class="s1">&#39;&#39;</span><span class="o">+</span><span class="nx">string</span><span class="p">).</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&amp;/g</span><span class="p">,</span> <span class="s1">&#39;&amp;amp;&#39;</span><span class="p">)</span>
+                        <span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&lt;/g</span><span class="p">,</span> <span class="s1">&#39;&amp;lt;&#39;</span><span class="p">)</span>
+                        <span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&gt;/g</span><span class="p">,</span> <span class="s1">&#39;&amp;gt;&#39;</span><span class="p">)</span>
+                        <span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&quot;/g</span><span class="p">,</span> <span class="s1">&#39;&amp;quot;&#39;</span><span class="p">)</span>
+                        <span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&#39;/g</span><span class="p">,</span> <span class="s1">&#39;&amp;#x27;&#39;</span><span class="p">)</span>
+                        <span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\//g</span><span class="p">,</span><span class="s1">&#39;&amp;#x2F;&#39;</span><span class="p">);</span>
+   <span class="p">};</span>
+
+   <span class="nx">done</span><span class="p">();</span>
+
+<span class="p">};</span>
+
+<span class="nx">TemplateProvider</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_include_templates</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">template</span><span class="p">)</span> <span class="p">{</span>
+   <span class="kd">var</span> <span class="nx">templates</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">_templates</span><span class="p">,</span>
+       <span class="nx">templates_source</span> <span class="o">=</span> <span class="nb">Object</span><span class="p">.</span><span class="nx">keys</span><span class="p">(</span><span class="nx">templates</span><span class="p">).</span><span class="nx">map</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">t</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="s1">&#39;&quot;&#39;</span> <span class="o">+</span> <span class="nx">t</span> <span class="o">+</span> <span class="s1">&#39;&quot;: &#39;</span> <span class="o">+</span> <span class="nx">templates</span><span class="p">[</span><span class="nx">t</span><span class="p">].</span><span class="nx">toString</span><span class="p">()</span> <span class="p">}),</span>
+       <span class="nx">out</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">_client_script</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/{{templates}}/</span><span class="p">,</span> <span class="nx">templates_source</span><span class="p">.</span><span class="nx">join</span><span class="p">(</span><span class="s1">&#39;,\n&#39;</span><span class="p">));</span>
+
+   <span class="nx">template</span><span class="p">.</span><span class="nx">add_script</span><span class="p">(</span><span class="k">new</span> <span class="nx">Script</span><span class="p">(</span><span class="nx">out</span><span class="p">,</span> <span class="kc">null</span><span class="p">,</span> <span class="nx">Script</span><span class="p">.</span><span class="nx">CLIENT</span><span class="p">,</span> <span class="nx">Script</span><span class="p">.</span><span class="nx">JAVASCRIPT</span><span class="p">));</span>
+<span class="p">};</span>
+
+
+
+<span class="nx">module</span><span class="p">.</span><span class="nx">exports</span> <span class="o">=</span> <span class="nx">TemplateProvider</span><span class="p">;</span>
+
+</pre></div></td></tr></tbody></table><div id="generated">generated Wed May 23 2012 00:50:06 GMT+0100 (BST)  </div></div></body></html>

@@ -1,0 +1,93 @@
+<!DOCTYPE html><html><head><title>file.js</title><meta http-equiv="Content-Type" content="text/html" charset="UTF-8"><link rel="stylesheet" media="all" href="../docco.css"></head><body><div id="container"><div id="background"></div><div id="jump_to">Jump To &hellip;<div id="jump_wrapper"><div id="jump_page"><a href="../index.html" class="source"><span class="file_name">README</span></a><a href="../src/dommr.js.html" class="source "><span class="base_path">src / </span><span class="file_name">dommr.js</span></a><a href="../src/file.js.html" class="source selected"><span class="base_path">src / </span><span class="file_name">file.js</span></a><a href="../src/script.js.html" class="source "><span class="base_path">src / </span><span class="file_name">script.js</span></a><a href="../src/session/client-session.js.html" class="source "><span class="base_path">src / session / </span><span class="file_name">client-session.js</span></a><a href="../src/session/provider.js.html" class="source "><span class="base_path">src / session / </span><span class="file_name">provider.js</span></a><a href="../src/session/session.js.html" class="source "><span class="base_path">src / session / </span><span class="file_name">session.js</span></a><a href="../src/stylesheet.js.html" class="source "><span class="base_path">src / </span><span class="file_name">stylesheet.js</span></a><a href="../src/template/client-template.js.html" class="source "><span class="base_path">src / template / </span><span class="file_name">client-template.js</span></a><a href="../src/template/provider.js.html" class="source "><span class="base_path">src / template / </span><span class="file_name">provider.js</span></a><a href="../src/template.js.html" class="source "><span class="base_path">src / </span><span class="file_name">template.js</span></a><a href="../src/xmlhttprequest.js.html" class="source "><span class="base_path">src / </span><span class="file_name">xmlhttprequest.js</span></a></div></div></div><table cellpadding="0" cellspacing="0"><thead><tr><th class="docs"><h1>file.js</h1><div class="filepath">src/</div></th><th class="code"></th></tr></thead><tbody><tr id="section-1"><td class="docs"><div class="pilwrap"><a href="#section-1" class="pilcrow">&#182;</a></div>
+</td><td class="code"><div class="highlight"><pre><span class="kd">var</span> <span class="nx">path</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;path&#39;</span><span class="p">),</span>
+    <span class="nx">fs</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;fs&#39;</span><span class="p">),</span>
+    <span class="nx">crypto</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;crypto&#39;</span><span class="p">),</span>
+    <span class="nx">util</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;util&#39;</span><span class="p">);</span></pre></div></td></tr><tr id="section-2"><td class="docs"><div class="pilwrap"><a href="#section-2" class="pilcrow">&#182;</a></div><p>Provides I/O functions for different types of files that dommr interacts with
+e.g. templates, stylesheets and scripts</p>
+</td><td class="code"><div class="highlight"><pre><span class="kd">function</span> <span class="nx">File</span><span class="p">(</span><span class="nx">path</span><span class="p">)</span> <span class="p">{</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">path</span> <span class="o">=</span> <span class="nx">path</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="nx">util</span><span class="p">.</span><span class="nx">inherits</span><span class="p">(</span><span class="nx">File</span><span class="p">,</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;events&#39;</span><span class="p">).</span><span class="nx">EventEmitter</span><span class="p">);</span></pre></div></td></tr><tr id="section-3"><td class="docs"><div class="pilwrap"><a href="#section-3" class="pilcrow">&#182;</a></div><p>A custome resolve function which should match path.resolve for all cases apart from
+where rel_path starts with a / then it has a . added before it and then passed to path.resolve.
+This is done so that we can use absolute paths in our template html for scripts and
+stylesheets but have them resolve relative to the templates directory</p>
+</td><td class="code"><div class="highlight"><pre><span class="nx">File</span><span class="p">.</span><span class="nx">resolve</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">base_path</span><span class="p">,</span> <span class="nx">rel_path</span><span class="p">)</span> <span class="p">{</span>
+   <span class="k">return</span> <span class="nx">path</span><span class="p">.</span><span class="nx">resolve</span><span class="p">(</span><span class="nx">base_path</span><span class="p">,</span> <span class="p">((</span><span class="nx">rel_path</span><span class="p">.</span><span class="nx">charAt</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">===</span> <span class="s1">&#39;/&#39;</span><span class="p">)</span> <span class="o">?</span> <span class="s1">&#39;.&#39;</span> <span class="o">:</span> <span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="nx">rel_path</span><span class="p">);</span>
+<span class="p">};</span></pre></div></td></tr><tr id="section-4"><td class="docs"><div class="pilwrap"><a href="#section-4" class="pilcrow">&#182;</a></div><p>Holds the path of the file</p>
+</td><td class="code"><div class="highlight"><pre><span class="nx">File</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">path</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span></pre></div></td></tr><tr id="section-5"><td class="docs"><div class="pilwrap"><a href="#section-5" class="pilcrow">&#182;</a></div><p>Once loaded holds the contents of the file</p>
+</td><td class="code"><div class="highlight"><pre><span class="nx">File</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">source</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span></pre></div></td></tr><tr id="section-6"><td class="docs"><div class="pilwrap"><a href="#section-6" class="pilcrow">&#182;</a></div><p>Will check that a path has been provided and that it exists before reading the file</p>
+</td><td class="code"><div class="highlight"><pre><span class="nx">File</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">load</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+
+   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="k">this</span><span class="p">.</span><span class="nx">path</span><span class="p">)</span> <span class="k">throw</span> <span class="nb">Error</span><span class="p">(</span><span class="s2">&quot;A path is needed in order to load a file&quot;</span><span class="p">);</span>
+   <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">path</span><span class="p">.</span><span class="nx">existsSync</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">path</span><span class="p">))</span> <span class="k">throw</span> <span class="k">new</span> <span class="nb">Error</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">path</span> <span class="o">+</span> <span class="s1">&#39; does not exist&#39;</span><span class="p">);</span>
+   <span class="k">else</span> <span class="p">{</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">_read</span><span class="p">();</span>
+   <span class="p">}</span>
+
+   <span class="k">return</span> <span class="k">this</span><span class="p">;</span>
+
+<span class="p">};</span></pre></div></td></tr><tr id="section-7"><td class="docs"><div class="pilwrap"><a href="#section-7" class="pilcrow">&#182;</a></div><p>Generate an uniqueu id for this file (will return it as well as setting it to this.id)</p>
+</td><td class="code"><div class="highlight"><pre><span class="nx">File</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">generate_id</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+
+   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="k">this</span><span class="p">.</span><span class="nx">source</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="k">typeof</span> <span class="nx">source</span> <span class="o">===</span> <span class="s1">&#39;string&#39;</span><span class="p">)</span> <span class="k">throw</span> <span class="nb">Error</span><span class="p">(</span><span class="s2">&quot;Cannot generate an id without any source&quot;</span><span class="p">);</span>
+   <span class="k">else</span> <span class="p">{</span>
+      <span class="kd">var</span> <span class="nx">hash</span> <span class="o">=</span> <span class="nx">crypto</span><span class="p">.</span><span class="nx">createHash</span><span class="p">(</span><span class="s1">&#39;sha1&#39;</span><span class="p">);</span>
+
+      <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">id</span> <span class="o">=</span> <span class="nx">hash</span><span class="p">.</span><span class="nx">update</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">source</span><span class="p">).</span><span class="nx">digest</span><span class="p">(</span><span class="s1">&#39;hex&#39;</span><span class="p">);</span>
+   <span class="p">}</span>
+
+<span class="p">};</span></pre></div></td></tr><tr id="section-8"><td class="docs"><div class="pilwrap"><a href="#section-8" class="pilcrow">&#182;</a></div><p>After validating the files existance it will watch the file and update this object
+any time the file is modified</p>
+</td><td class="code"><div class="highlight"><pre><span class="nx">File</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">watch</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+
+   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="k">this</span><span class="p">.</span><span class="nx">path</span><span class="p">)</span> <span class="k">throw</span> <span class="nb">Error</span><span class="p">(</span><span class="s2">&quot;A path is needed in order to watch a file&quot;</span><span class="p">);</span>
+   <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">path</span><span class="p">.</span><span class="nx">existsSync</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">path</span><span class="p">))</span> <span class="k">throw</span> <span class="nb">Error</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">path</span> <span class="o">+</span> <span class="s1">&#39; does not exist&#39;</span><span class="p">);</span>
+   <span class="k">else</span> <span class="p">{</span>
+      <span class="nx">fs</span><span class="p">.</span><span class="nx">watchFile</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">path</span><span class="p">,</span> <span class="p">{</span> <span class="nx">interval</span><span class="o">:</span> <span class="mi">100</span> <span class="p">},</span> <span class="k">this</span><span class="p">.</span><span class="nx">_file_modified</span><span class="p">.</span><span class="nx">bind</span><span class="p">(</span><span class="k">this</span><span class="p">));</span>
+   <span class="p">}</span>
+
+   <span class="k">return</span> <span class="k">this</span><span class="p">;</span>
+<span class="p">};</span></pre></div></td></tr><tr id="section-9"><td class="docs"><div class="pilwrap"><a href="#section-9" class="pilcrow">&#182;</a></div><p>Stop watching the file</p>
+</td><td class="code"><div class="highlight"><pre><span class="nx">File</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">unwatch</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+
+   <span class="nx">fs</span><span class="p">.</span><span class="nx">unwatchFile</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">path</span><span class="p">);</span>
+
+   <span class="k">return</span> <span class="k">this</span><span class="p">;</span>
+<span class="p">};</span>
+
+
+
+<span class="nx">File</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_file_modified</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">curr</span><span class="p">,</span> <span class="nx">prev</span><span class="p">)</span> <span class="p">{</span>
+
+   <span class="k">if</span> <span class="p">(</span><span class="nx">curr</span><span class="p">.</span><span class="nx">mtime</span><span class="p">.</span><span class="nx">getTime</span><span class="p">()</span> <span class="o">&gt;</span> <span class="nx">prev</span><span class="p">.</span><span class="nx">mtime</span><span class="p">.</span><span class="nx">getTime</span><span class="p">())</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">curr</span><span class="p">.</span><span class="nx">size</span> <span class="o">===</span> <span class="mi">0</span><span class="p">)</span> <span class="k">this</span><span class="p">.</span><span class="nx">_changed</span> <span class="o">=</span> <span class="kc">true</span><span class="p">;</span>
+      <span class="k">else</span> <span class="k">this</span><span class="p">.</span><span class="nx">_read</span><span class="p">();</span>
+   <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">_changed</span> <span class="o">&amp;&amp;</span> <span class="nx">curr</span><span class="p">.</span><span class="nx">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">_changed</span> <span class="o">=</span> <span class="kc">false</span><span class="p">;</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">_read</span><span class="p">();</span>
+   <span class="p">}</span>
+
+<span class="p">};</span>
+
+<span class="nx">File</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_read</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+
+   <span class="k">this</span><span class="p">.</span><span class="nx">source</span> <span class="o">=</span> <span class="nx">fs</span><span class="p">.</span><span class="nx">readFileSync</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">path</span><span class="p">,</span> <span class="s1">&#39;utf8&#39;</span><span class="p">);</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">generate_id</span><span class="p">();</span>
+
+   <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">constructor</span><span class="p">.</span><span class="nx">name</span> <span class="o">+</span> <span class="s1">&#39; loaded from &#39;</span> <span class="o">+</span> <span class="k">this</span><span class="p">.</span><span class="nx">path</span><span class="p">);</span>
+
+   <span class="k">this</span><span class="p">.</span><span class="nx">_process_source</span><span class="p">();</span>
+
+<span class="p">};</span></pre></div></td></tr><tr id="section-10"><td class="docs"><div class="pilwrap"><a href="#section-10" class="pilcrow">&#182;</a></div><p>inheriting objects can provide there own <em>process</em>source which will be run
+every time the file is read into the object</p>
+</td><td class="code"><div class="highlight"><pre><span class="nx">File</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_process_source</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span> <span class="p">};</span>
+
+
+
+
+
+<span class="nx">module</span><span class="p">.</span><span class="nx">exports</span> <span class="o">=</span> <span class="nx">File</span><span class="p">;</span>
+
+</pre></div></td></tr></tbody></table><div id="generated">generated Wed May 23 2012 00:50:04 GMT+0100 (BST)  </div></div></body></html>

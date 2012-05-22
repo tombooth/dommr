@@ -1,0 +1,513 @@
+<!DOCTYPE html><html><head><title>dommr.js</title><meta http-equiv="Content-Type" content="text/html" charset="UTF-8"><link rel="stylesheet" media="all" href="../docco.css"></head><body><div id="container"><div id="background"></div><div id="jump_to">Jump To &hellip;<div id="jump_wrapper"><div id="jump_page"><a href="../index.html" class="source"><span class="file_name">README</span></a><a href="../src/dommr.js.html" class="source selected"><span class="base_path">src / </span><span class="file_name">dommr.js</span></a><a href="../src/file.js.html" class="source "><span class="base_path">src / </span><span class="file_name">file.js</span></a><a href="../src/script.js.html" class="source "><span class="base_path">src / </span><span class="file_name">script.js</span></a><a href="../src/session/client-session.js.html" class="source "><span class="base_path">src / session / </span><span class="file_name">client-session.js</span></a><a href="../src/session/provider.js.html" class="source "><span class="base_path">src / session / </span><span class="file_name">provider.js</span></a><a href="../src/session/session.js.html" class="source "><span class="base_path">src / session / </span><span class="file_name">session.js</span></a><a href="../src/stylesheet.js.html" class="source "><span class="base_path">src / </span><span class="file_name">stylesheet.js</span></a><a href="../src/template/client-template.js.html" class="source "><span class="base_path">src / template / </span><span class="file_name">client-template.js</span></a><a href="../src/template/provider.js.html" class="source "><span class="base_path">src / template / </span><span class="file_name">provider.js</span></a><a href="../src/template.js.html" class="source "><span class="base_path">src / </span><span class="file_name">template.js</span></a><a href="../src/xmlhttprequest.js.html" class="source "><span class="base_path">src / </span><span class="file_name">xmlhttprequest.js</span></a></div></div></div><table cellpadding="0" cellspacing="0"><thead><tr><th class="docs"><h1>dommr.js</h1><div class="filepath">src/</div></th><th class="code"></th></tr></thead><tbody><tr id="section-1"><td class="docs"><div class="pilwrap"><a href="#section-1" class="pilcrow">&#182;</a></div>
+</td><td class="code"><div class="highlight"><pre><span class="kd">var</span> <span class="nx">fs</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;fs&#39;</span><span class="p">),</span>
+    <span class="nx">path</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;path&#39;</span><span class="p">),</span>
+    <span class="nx">jsdom</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;jsdom&#39;</span><span class="p">),</span>
+    <span class="nx">uuid</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;node-uuid&#39;</span><span class="p">),</span>
+    <span class="nx">Template</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;./template.js&#39;</span><span class="p">),</span>
+    <span class="nx">Script</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;./script.js&#39;</span><span class="p">),</span>
+    <span class="nx">XMLHttpRequest</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;./xmlhttprequest&#39;</span><span class="p">);</span>
+
+
+
+<span class="kd">function</span> <span class="nx">dommr</span><span class="p">(</span><span class="nx">path</span><span class="p">,</span> <span class="nx">options</span><span class="p">)</span> <span class="p">{</span>
+   <span class="nx">options</span> <span class="o">=</span> <span class="nx">options</span> <span class="o">||</span> <span class="p">{</span> <span class="p">};</span>
+
+   <span class="k">this</span><span class="p">.</span><span class="nx">_extension_timeout</span> <span class="o">=</span> <span class="nx">options</span><span class="p">.</span><span class="nx">extension_timeout</span> <span class="o">||</span> <span class="mi">0</span><span class="p">;</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_mount_path</span> <span class="o">=</span> <span class="nx">options</span><span class="p">.</span><span class="nx">mount_path</span> <span class="o">||</span> <span class="s1">&#39;/__dommr&#39;</span><span class="p">;</span>
+
+   <span class="k">this</span><span class="p">.</span><span class="nx">_mounted_regex</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">RegExp</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">_mount_path</span> <span class="o">+</span> <span class="s1">&#39;/(.+)&#39;</span><span class="p">);</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_template</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Template</span><span class="p">(</span><span class="nx">path</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">_mount_path</span><span class="p">);</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_intercepts</span> <span class="o">=</span> <span class="p">[</span> <span class="p">{</span> <span class="nx">regex</span><span class="o">:</span> <span class="sr">/\/script\/([a-zA-Z0-9]+)/</span><span class="p">,</span> <span class="nx">fn</span><span class="o">:</span> <span class="k">this</span><span class="p">.</span><span class="nx">_serve_script</span><span class="p">.</span><span class="nx">bind</span><span class="p">(</span><span class="k">this</span><span class="p">)</span> <span class="p">}</span> <span class="p">];</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_registered_extensions</span> <span class="o">=</span> <span class="p">[</span> <span class="s1">&#39;scripts&#39;</span> <span class="p">];</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_active_extensions</span> <span class="o">=</span> <span class="p">{</span> <span class="p">};</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_inactive_extensions</span> <span class="o">=</span> <span class="p">{</span> <span class="p">};</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_active_requests</span> <span class="o">=</span> <span class="p">{</span> <span class="p">};</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_pre_exec</span> <span class="o">=</span> <span class="p">[</span> <span class="p">];</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_post_exec</span> <span class="o">=</span> <span class="p">[</span> <span class="p">];</span>
+
+   <span class="k">this</span><span class="p">.</span><span class="nx">_template</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;scripts:pre&#39;</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">emit</span><span class="p">.</span><span class="nx">bind</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="s1">&#39;template:scripts:pre&#39;</span><span class="p">));</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_template</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;scripts:post&#39;</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">emit</span><span class="p">.</span><span class="nx">bind</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="s1">&#39;template:scripts:post&#39;</span><span class="p">));</span>
+<span class="p">}</span>
+
+
+<span class="nx">require</span><span class="p">(</span><span class="s1">&#39;util&#39;</span><span class="p">).</span><span class="nx">inherits</span><span class="p">(</span><span class="nx">dommr</span><span class="p">,</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;events&#39;</span><span class="p">).</span><span class="nx">EventEmitter</span><span class="p">);</span></pre></div></td></tr><tr id="section-2"><td class="docs"><div class="pilwrap"><a href="#section-2" class="pilcrow">&#182;</a></div><p>Include the included extensions as properties on the
+main constructor</p>
+</td><td class="code"><div class="highlight"><pre><span class="nx">dommr</span><span class="p">.</span><span class="nx">Session</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;./session/provider.js&#39;</span><span class="p">);</span>
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">Template</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;./template/provider.js&#39;</span><span class="p">);</span>
+
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_active_requests</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span>
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_registered_extensions</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span>
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_active_extensions</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span>
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_inactive_extensions</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span>
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_extension_timeout</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span>
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_mount_path</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span>
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_mounted_regex</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span>
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_template</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span>
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_intercepts</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span>
+
+
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">register</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">extension</span><span class="p">)</span> <span class="p">{</span>
+
+   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">extension</span><span class="p">.</span><span class="nx">register</span><span class="p">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="nb">Error</span><span class="p">(</span><span class="s1">&#39;Not a valid dommr extention&#39;</span><span class="p">);</span>
+
+   <span class="nx">extension</span><span class="p">.</span><span class="nx">register</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">_mount_path</span><span class="p">);</span>
+   <span class="nx">extension</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;working&#39;</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">_extension_working</span><span class="p">.</span><span class="nx">bind</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="nx">extension</span><span class="p">));</span>
+   <span class="nx">extension</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;done&#39;</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">_extension_done</span><span class="p">.</span><span class="nx">bind</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="nx">extension</span><span class="p">));</span>
+   <span class="nx">extension</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;error&#39;</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">_extension_error</span><span class="p">.</span><span class="nx">bind</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="nx">extension</span><span class="p">));</span>
+
+   <span class="k">this</span><span class="p">.</span><span class="nx">_registered_extensions</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">extension</span><span class="p">);</span>
+
+   <span class="k">return</span> <span class="k">this</span><span class="p">;</span>
+
+<span class="p">};</span>
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">register_intercept</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">regex</span><span class="p">,</span> <span class="nx">fn</span><span class="p">)</span> <span class="p">{</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_intercepts</span><span class="p">.</span><span class="nx">push</span><span class="p">({</span> <span class="nx">regex</span><span class="o">:</span> <span class="nx">regex</span><span class="p">,</span> <span class="nx">fn</span><span class="o">:</span> <span class="nx">fn</span> <span class="p">});</span>
+<span class="p">};</span>
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">middleware</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+
+   <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;Loading app...&#39;</span><span class="p">);</span>
+
+   <span class="k">this</span><span class="p">.</span><span class="nx">_template</span><span class="p">.</span><span class="nx">load</span><span class="p">().</span><span class="nx">watch</span><span class="p">();</span>
+
+   <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;Done.\n&#39;</span><span class="p">);</span>
+
+   <span class="k">return</span> <span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">next</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">var</span> <span class="nx">url</span> <span class="o">=</span> <span class="nx">req</span><span class="p">.</span><span class="nx">url</span><span class="p">,</span>
+          <span class="nx">mounted_path_match</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">_mounted_regex</span><span class="p">.</span><span class="nx">exec</span><span class="p">(</span><span class="nx">url</span><span class="p">),</span>
+          <span class="nx">mounted_path</span> <span class="o">=</span> <span class="p">(</span><span class="nx">mounted_path_match</span><span class="p">)</span> <span class="o">?</span> <span class="nx">mounted_path_match</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">:</span> <span class="kc">null</span><span class="p">,</span>
+          <span class="nx">intercepts</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">_intercepts</span><span class="p">,</span>
+          <span class="nx">match</span><span class="p">,</span> <span class="nx">intercept</span><span class="p">,</span> <span class="nx">served</span> <span class="o">=</span> <span class="kc">false</span><span class="p">;</span>
+
+      <span class="k">if</span> <span class="p">(</span><span class="nx">mounted_path</span><span class="p">)</span> <span class="p">{</span>
+         <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="nx">len</span> <span class="o">=</span> <span class="nx">intercepts</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">len</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nx">served</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+            <span class="nx">intercept</span> <span class="o">=</span> <span class="nx">intercepts</span><span class="p">[</span><span class="nx">i</span><span class="p">];</span>
+            <span class="nx">match</span> <span class="o">=</span> <span class="nx">intercept</span><span class="p">.</span><span class="nx">regex</span><span class="p">.</span><span class="nx">exec</span><span class="p">(</span><span class="nx">req</span><span class="p">.</span><span class="nx">url</span><span class="p">);</span>
+
+            <span class="k">if</span> <span class="p">(</span><span class="nx">match</span><span class="p">)</span> <span class="p">{</span>
+               <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;serving&#39;</span><span class="p">,</span> <span class="nx">intercept</span><span class="p">);</span>
+               <span class="nx">served</span> <span class="o">=</span> <span class="nx">intercept</span><span class="p">.</span><span class="nx">fn</span><span class="p">(</span><span class="nx">match</span><span class="p">,</span> <span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">);</span>
+            <span class="p">}</span>
+         <span class="p">}</span>
+
+         <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">served</span><span class="p">)</span> <span class="nx">res</span><span class="p">.</span><span class="nx">end</span><span class="p">();</span>
+
+      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+         <span class="k">this</span><span class="p">.</span><span class="nx">_process_request</span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">);</span>
+      <span class="p">}</span>
+
+   <span class="p">}).</span><span class="nx">bind</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
+
+<span class="p">};</span>
+
+
+
+
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_extension_working</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">extension</span><span class="p">,</span> <span class="nx">id</span><span class="p">)</span> <span class="p">{</span>
+   <span class="kd">var</span> <span class="nx">index</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">_inactive_extensions</span><span class="p">[</span><span class="nx">id</span><span class="p">].</span><span class="nx">indexOf</span><span class="p">(</span><span class="nx">extension</span><span class="p">);</span>
+
+   <span class="k">if</span> <span class="p">(</span><span class="nx">index</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;[&#39;</span> <span class="o">+</span> <span class="nx">id</span> <span class="o">+</span> <span class="s1">&#39;] &#39;</span> <span class="o">+</span> <span class="p">((</span><span class="nx">extension</span><span class="p">.</span><span class="nx">substr</span><span class="p">)</span> <span class="o">?</span> <span class="nx">extension</span> <span class="o">:</span> <span class="nx">extension</span><span class="p">.</span><span class="nx">constructor</span><span class="p">.</span><span class="nx">name</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39; is working&#39;</span><span class="p">);</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">_inactive_extensions</span><span class="p">[</span><span class="nx">id</span><span class="p">].</span><span class="nx">splice</span><span class="p">(</span><span class="nx">index</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+   <span class="p">}</span>
+
+   <span class="k">this</span><span class="p">.</span><span class="nx">_active_extensions</span><span class="p">[</span><span class="nx">id</span><span class="p">].</span><span class="nx">push</span><span class="p">(</span><span class="nx">extension</span><span class="p">);</span>
+<span class="p">};</span>
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_extension_done</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">extension</span><span class="p">,</span> <span class="nx">id</span><span class="p">)</span> <span class="p">{</span>
+   <span class="kd">var</span> <span class="nx">index</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">_active_extensions</span><span class="p">[</span><span class="nx">id</span><span class="p">].</span><span class="nx">indexOf</span><span class="p">(</span><span class="nx">extension</span><span class="p">);</span>
+
+   <span class="k">if</span> <span class="p">(</span><span class="nx">index</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">_active_extensions</span><span class="p">[</span><span class="nx">id</span><span class="p">].</span><span class="nx">splice</span><span class="p">(</span><span class="nx">index</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+   <span class="p">}</span> 
+
+   <span class="nx">index</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">_active_extensions</span><span class="p">[</span><span class="nx">id</span><span class="p">].</span><span class="nx">indexOf</span><span class="p">(</span><span class="nx">extension</span><span class="p">);</span>
+
+   <span class="k">if</span> <span class="p">(</span><span class="nx">index</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;[&#39;</span> <span class="o">+</span> <span class="nx">id</span> <span class="o">+</span> <span class="s1">&#39;] &#39;</span> <span class="o">+</span> <span class="p">((</span><span class="nx">extension</span><span class="p">.</span><span class="nx">substr</span><span class="p">)</span> <span class="o">?</span> <span class="nx">extension</span> <span class="o">:</span> <span class="nx">extension</span><span class="p">.</span><span class="nx">constructor</span><span class="p">.</span><span class="nx">name</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39; is done&#39;</span><span class="p">);</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">_inactive_extensions</span><span class="p">[</span><span class="nx">id</span><span class="p">].</span><span class="nx">push</span><span class="p">(</span><span class="nx">extension</span><span class="p">);</span>
+   <span class="p">}</span>
+
+   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="k">this</span><span class="p">.</span><span class="nx">_active_requests</span><span class="p">[</span><span class="nx">id</span><span class="p">].</span><span class="nx">scripts_executing</span> <span class="o">&amp;&amp;</span> 
+         <span class="k">this</span><span class="p">.</span><span class="nx">_active_extensions</span><span class="p">[</span><span class="nx">id</span><span class="p">].</span><span class="nx">length</span> <span class="o">===</span> <span class="mi">0</span><span class="p">)</span> <span class="k">this</span><span class="p">.</span><span class="nx">_request_complete</span><span class="p">(</span><span class="nx">id</span><span class="p">);</span>
+<span class="p">};</span>
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_extension_error</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">extension</span><span class="p">,</span> <span class="nx">id</span><span class="p">,</span> <span class="nx">error</span><span class="p">)</span> <span class="p">{</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_request_internal_error</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span> <span class="nx">error</span><span class="p">);</span>
+<span class="p">};</span>
+
+
+
+
+
+
+
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_process_request</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">request</span><span class="p">,</span> <span class="nx">response</span><span class="p">)</span> <span class="p">{</span>
+   <span class="kd">var</span> <span class="nx">id</span> <span class="o">=</span> <span class="nx">uuid</span><span class="p">(),</span> 
+       <span class="nx">that</span> <span class="o">=</span> <span class="k">this</span><span class="p">,</span>
+       <span class="nx">data</span><span class="p">;</span>
+
+   <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;[&#39;</span> <span class="o">+</span> <span class="nx">id</span> <span class="o">+</span><span class="s1">&#39;] request starting: &#39;</span> <span class="o">+</span> <span class="nx">request</span><span class="p">.</span><span class="nx">url</span><span class="p">);</span>
+   
+   <span class="k">this</span><span class="p">.</span><span class="nx">_inactive_extensions</span><span class="p">[</span><span class="nx">id</span><span class="p">]</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">_registered_extensions</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">_active_extensions</span><span class="p">[</span><span class="nx">id</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span> <span class="p">];</span>
+
+   <span class="nx">request</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;data&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">d</span><span class="p">)</span> <span class="p">{</span> <span class="nx">data</span> <span class="o">=</span> <span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="o">?</span> <span class="nx">data</span> <span class="o">+</span> <span class="nx">d</span> <span class="o">:</span> <span class="nx">d</span><span class="p">;</span> <span class="p">});</span>
+   <span class="nx">request</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;end&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span></pre></div></td></tr><tr id="section-3"><td class="docs"><div class="pilwrap"><a href="#section-3" class="pilcrow">&#182;</a></div><div class="dox"><div class="summary"><p>Create the window object and augment global object</p></div><div class="body"></div></div>
+</td><td class="code"><div class="highlight"><pre>      <span class="kd">var</span> <span class="nb">window</span> <span class="o">=</span> <span class="nx">that</span><span class="p">.</span><span class="nx">_template</span><span class="p">.</span><span class="nx">create_window</span><span class="p">();</span>
+
+      <span class="nx">that</span><span class="p">.</span><span class="nx">_add_timing</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span> <span class="nb">window</span><span class="p">);</span>
+      <span class="nx">that</span><span class="p">.</span><span class="nx">_add_script_loading</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span> <span class="nb">window</span><span class="p">);</span>
+
+      <span class="nb">window</span><span class="p">.</span><span class="nx">console</span> <span class="o">=</span> <span class="nx">console</span><span class="p">;</span>
+      <span class="nb">window</span><span class="p">.</span><span class="nx">location</span> <span class="o">=</span> <span class="nx">that</span><span class="p">.</span><span class="nx">_build_location</span><span class="p">(</span><span class="nx">request</span><span class="p">,</span> <span class="nx">data</span><span class="p">);</span>
+      <span class="nb">window</span><span class="p">.</span><span class="nx">navigator</span> <span class="o">=</span> <span class="nx">that</span><span class="p">.</span><span class="nx">_build_navigator</span><span class="p">(</span><span class="nx">request</span><span class="p">);</span>
+      <span class="nb">window</span><span class="p">.</span><span class="nx">history</span> <span class="o">=</span> <span class="p">{</span> <span class="nx">pushState</span><span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span> <span class="p">}</span> <span class="p">};</span>
+
+      <span class="nb">window</span><span class="p">.</span><span class="nx">XMLHttpRequest</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+
+         <span class="kd">var</span> <span class="nx">xmlhttprequest</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">XMLHttpRequest</span><span class="p">();</span>
+
+         <span class="nx">xmlhttprequest</span><span class="p">.</span><span class="nx">once</span><span class="p">(</span><span class="s1">&#39;working&#39;</span><span class="p">,</span> <span class="nx">that</span><span class="p">.</span><span class="nx">_extension_working</span><span class="p">.</span><span class="nx">bind</span><span class="p">(</span><span class="nx">that</span><span class="p">,</span> <span class="nx">xmlhttprequest</span><span class="p">,</span> <span class="nx">id</span><span class="p">));</span>
+         <span class="nx">xmlhttprequest</span><span class="p">.</span><span class="nx">once</span><span class="p">(</span><span class="s1">&#39;done&#39;</span><span class="p">,</span> <span class="nx">that</span><span class="p">.</span><span class="nx">_extension_done</span><span class="p">.</span><span class="nx">bind</span><span class="p">(</span><span class="nx">that</span><span class="p">,</span> <span class="nx">xmlhttprequest</span><span class="p">,</span> <span class="nx">id</span><span class="p">));</span>
+
+         <span class="k">return</span> <span class="nx">xmlhttprequest</span><span class="p">;</span>
+
+      <span class="p">};</span>
+
+      <span class="kd">var</span> <span class="nx">d_request</span> <span class="o">=</span> <span class="nx">that</span><span class="p">.</span><span class="nx">_active_requests</span><span class="p">[</span><span class="nx">id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+         <span class="nx">id</span><span class="o">:</span> <span class="nx">id</span><span class="p">,</span>
+         <span class="nx">request</span><span class="o">:</span> <span class="nx">request</span><span class="p">,</span>
+         <span class="nx">response</span><span class="o">:</span> <span class="nx">response</span><span class="p">,</span>
+         <span class="nb">window</span><span class="o">:</span> <span class="nb">window</span><span class="p">,</span>
+         <span class="nx">scripts_executing</span><span class="o">:</span> <span class="kc">true</span>
+      <span class="p">};</span>
+
+      <span class="nx">that</span><span class="p">.</span><span class="nx">_exec_chain</span><span class="p">(</span><span class="nx">that</span><span class="p">.</span><span class="nx">_pre_exec</span><span class="p">,</span> <span class="p">[</span><span class="nx">d_request</span><span class="p">],</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+         <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;[&#39;</span> <span class="o">+</span> <span class="nx">id</span> <span class="o">+</span> <span class="s1">&#39;] starting execution...&#39;</span><span class="p">);</span>
+
+         <span class="nx">that</span><span class="p">.</span><span class="nx">_extension_working</span><span class="p">(</span><span class="s1">&#39;scripts&#39;</span><span class="p">,</span> <span class="nx">id</span><span class="p">);</span>
+         <span class="nx">that</span><span class="p">.</span><span class="nx">_execute_scripts</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span> <span class="nb">window</span><span class="p">);</span>
+      <span class="p">});</span>
+
+   <span class="p">});</span>
+<span class="p">};</span>
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_pre_exec</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span>
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_post_exec</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span>
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_exec_chain</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">arr</span><span class="p">,</span> <span class="nx">args</span><span class="p">,</span> <span class="nx">done</span><span class="p">)</span> <span class="p">{</span>
+   <span class="kd">var</span> <span class="nx">fns_to_go</span> <span class="o">=</span> <span class="nx">arr</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span>
+
+   <span class="k">if</span> <span class="p">(</span><span class="nx">arr</span><span class="p">.</span><span class="nx">length</span> <span class="o">===</span> <span class="mi">0</span><span class="p">)</span> <span class="nx">done</span><span class="p">();</span>
+
+   <span class="nx">args</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="o">--</span><span class="nx">fns_to_go</span> <span class="o">===</span> <span class="mi">0</span><span class="p">)</span> <span class="nx">done</span><span class="p">();</span>
+   <span class="p">});</span>
+
+   <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="nx">l</span> <span class="o">=</span> <span class="nx">arr</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">l</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">arr</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">apply</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="nx">args</span><span class="p">);</span>
+   <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">register_pre_exec</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">fn</span><span class="p">)</span> <span class="p">{</span> <span class="k">this</span><span class="p">.</span><span class="nx">_pre_exec</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">fn</span><span class="p">);</span> <span class="p">};</span> 
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">register_post_exec</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">fn</span><span class="p">)</span> <span class="p">{</span> <span class="k">this</span><span class="p">.</span><span class="nx">_post_exec</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">fn</span><span class="p">);</span> <span class="p">};</span> 
+
+
+
+
+
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_request_complete</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span> <span class="p">{</span>
+   <span class="kd">var</span> <span class="nx">request</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">_active_requests</span><span class="p">[</span><span class="nx">id</span><span class="p">],</span>
+       <span class="nb">window</span> <span class="o">=</span> <span class="nx">request</span><span class="p">.</span><span class="nb">window</span><span class="p">;</span>
+
+   <span class="nb">window</span><span class="p">.</span><span class="nb">document</span><span class="p">.</span><span class="nx">implementation</span><span class="p">.</span><span class="nx">removeFeature</span><span class="p">(</span><span class="s1">&#39;FetchExternalResources&#39;</span><span class="p">);</span>
+   <span class="nb">window</span><span class="p">.</span><span class="nb">document</span><span class="p">.</span><span class="nx">implementation</span><span class="p">.</span><span class="nx">removeFeature</span><span class="p">(</span><span class="s1">&#39;ProcessExternalResources&#39;</span><span class="p">);</span></pre></div></td></tr><tr id="section-4"><td class="docs"><div class="pilwrap"><a href="#section-4" class="pilcrow">&#182;</a></div><p>if we have a timeout on the extensions then stop it from
+executing after the request has been completed</p>
+</td><td class="code"><div class="highlight"><pre>   <span class="k">if</span> <span class="p">(</span><span class="nx">request</span><span class="p">.</span><span class="nx">timeout_id</span><span class="p">)</span> <span class="nx">clearTimeout</span><span class="p">(</span><span class="nx">request</span><span class="p">.</span><span class="nx">timeout_id</span><span class="p">);</span>
+
+   <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;[&#39;</span> <span class="o">+</span> <span class="nx">id</span> <span class="o">+</span> <span class="s1">&#39;] finished execution&#39;</span><span class="p">);</span>
+
+   <span class="k">this</span><span class="p">.</span><span class="nx">_exec_chain</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">_post_exec</span><span class="p">,</span> <span class="p">[</span><span class="nx">request</span><span class="p">],</span> <span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">_request_send</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span> <span class="nb">window</span><span class="p">.</span><span class="nb">document</span><span class="p">.</span><span class="nx">innerHTML</span><span class="p">);</span>
+
+      <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;[&#39;</span> <span class="o">+</span> <span class="nx">id</span> <span class="o">+</span> <span class="s1">&#39;] request completed&#39;</span><span class="p">);</span>
+   <span class="p">}).</span><span class="nx">bind</span><span class="p">(</span><span class="k">this</span><span class="p">));</span>
+   
+<span class="p">};</span>
+
+
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_request_internal_error</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span> <span class="nx">error</span><span class="p">)</span> <span class="p">{</span></pre></div></td></tr><tr id="section-5"><td class="docs"><div class="pilwrap"><a href="#section-5" class="pilcrow">&#182;</a></div><p>if we have a timeout on the extensions then stop it from
+executing after the request has been completed</p>
+</td><td class="code"><div class="highlight"><pre>   <span class="k">if</span> <span class="p">(</span><span class="nx">request</span><span class="p">.</span><span class="nx">timeout_id</span><span class="p">)</span> <span class="nx">clearTimeout</span><span class="p">(</span><span class="nx">request</span><span class="p">.</span><span class="nx">timeout_id</span><span class="p">);</span>
+
+   <span class="k">this</span><span class="p">.</span><span class="nx">_request_send</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">_error_template_html</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="s1">&#39;{{error_message}}&#39;</span><span class="p">,</span> <span class="nx">error</span><span class="p">.</span><span class="nx">toString</span><span class="p">()));</span>
+
+   <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;[&#39;</span> <span class="o">+</span> <span class="nx">id</span> <span class="o">+</span> <span class="s1">&#39;] request completed with an error&#39;</span><span class="p">);</span>
+
+<span class="p">};</span>
+
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_request_script_error</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span> <span class="nx">exception</span><span class="p">,</span> <span class="nx">script</span><span class="p">)</span> <span class="p">{</span>
+   <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">exception</span><span class="p">);</span>
+   <span class="kd">var</span> <span class="nx">line_match</span> <span class="o">=</span> <span class="o">+</span><span class="sr">/:([0-9]+):[0-9]+/</span><span class="p">.</span><span class="nx">exec</span><span class="p">(</span><span class="nx">exception</span><span class="p">.</span><span class="nx">stack</span><span class="p">),</span>
+       <span class="nx">line_num</span> <span class="o">=</span> <span class="p">(</span><span class="nx">line_match</span> <span class="o">&amp;&amp;</span> <span class="nx">line_match</span><span class="p">.</span><span class="nx">length</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">)</span> <span class="o">?</span> <span class="nx">line_match</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+       <span class="nx">lines</span> <span class="o">=</span> <span class="nx">script</span><span class="p">.</span><span class="nx">source</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s1">&#39;\n&#39;</span><span class="p">),</span>
+       <span class="nx">context_lines</span> <span class="o">=</span> <span class="p">[];</span>
+
+   <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="nx">line_num</span> <span class="o">-</span> <span class="mi">3</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;=</span> <span class="nx">line_num</span> <span class="o">+</span> <span class="mi">2</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">i</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="o">||</span> <span class="nx">i</span> <span class="o">&gt;</span> <span class="nx">lines</span><span class="p">.</span><span class="nx">length</span><span class="p">)</span> <span class="k">continue</span><span class="p">;</span>
+      <span class="k">else</span> <span class="p">{</span>
+         <span class="nx">context_lines</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">i</span> <span class="o">+</span> <span class="s1">&#39;: &#39;</span> <span class="o">+</span> <span class="nx">lines</span><span class="p">[</span><span class="nx">i</span><span class="p">]);</span>
+      <span class="p">}</span>
+   <span class="p">}</span>
+
+   <span class="k">this</span><span class="p">.</span><span class="nx">_request_send</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span> <span class="s1">&#39;&lt;pre&gt;&#39;</span> <span class="o">+</span> <span class="nx">context_lines</span><span class="p">.</span><span class="nx">join</span><span class="p">(</span><span class="s1">&#39;\n&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;\n\n&#39;</span> <span class="o">+</span> <span class="nx">exception</span><span class="p">.</span><span class="nx">stack</span> <span class="o">+</span> <span class="s1">&#39;&lt;/pre&gt;&#39;</span><span class="p">);</span>
+<span class="p">};</span>
+
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_request_send</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span> <span class="nx">content</span><span class="p">)</span> <span class="p">{</span>
+   <span class="kd">var</span> <span class="nx">request</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">_active_requests</span><span class="p">[</span><span class="nx">id</span><span class="p">],</span>
+       <span class="nx">response</span> <span class="o">=</span> <span class="nx">request</span><span class="p">.</span><span class="nx">response</span><span class="p">;</span>
+
+   <span class="nx">response</span><span class="p">.</span><span class="nx">setHeader</span><span class="p">(</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">,</span> <span class="s1">&#39;text/html; charset=utf-8&#39;</span><span class="p">);</span>
+   <span class="nx">response</span><span class="p">.</span><span class="nx">setHeader</span><span class="p">(</span><span class="s1">&#39;Content-Length&#39;</span><span class="p">,</span> <span class="nx">content</span><span class="p">.</span><span class="nx">length</span><span class="p">);</span>
+   <span class="nx">response</span><span class="p">.</span><span class="nx">end</span><span class="p">(</span><span class="nx">content</span><span class="p">,</span> <span class="s1">&#39;utf8&#39;</span><span class="p">);</span>
+
+   <span class="nx">request</span><span class="p">.</span><span class="nb">window</span><span class="p">.</span><span class="nx">close</span><span class="p">();</span>
+
+   <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;[&#39;</span> <span class="o">+</span> <span class="nx">id</span> <span class="o">+</span> <span class="s1">&#39;] request sent&#39;</span><span class="p">);</span>
+
+   <span class="k">delete</span> <span class="k">this</span><span class="p">.</span><span class="nx">_active_requests</span><span class="p">[</span><span class="nx">id</span><span class="p">];</span>
+   <span class="k">delete</span> <span class="k">this</span><span class="p">.</span><span class="nx">_active_extensions</span><span class="p">[</span><span class="nx">id</span><span class="p">];</span>
+   <span class="k">delete</span> <span class="k">this</span><span class="p">.</span><span class="nx">_inactive_extensions</span><span class="p">[</span><span class="nx">id</span><span class="p">];</span>
+<span class="p">};</span>
+
+
+
+
+
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_execute_scripts</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span> <span class="nb">window</span><span class="p">)</span> <span class="p">{</span>
+   <span class="kd">var</span> <span class="nx">scripts</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">_template</span><span class="p">.</span><span class="nx">server_scripts</span><span class="p">;</span>
+
+   <span class="nb">window</span><span class="p">.</span><span class="nb">document</span><span class="p">.</span><span class="nx">implementation</span><span class="p">.</span><span class="nx">addFeature</span><span class="p">(</span><span class="s1">&#39;FetchExternalResources&#39;</span><span class="p">,</span> <span class="s1">&#39;script&#39;</span><span class="p">);</span>
+   <span class="nb">window</span><span class="p">.</span><span class="nb">document</span><span class="p">.</span><span class="nx">implementation</span><span class="p">.</span><span class="nx">addFeature</span><span class="p">(</span><span class="s1">&#39;ProcessExternalResources&#39;</span><span class="p">,</span> <span class="s1">&#39;script&#39;</span><span class="p">);</span>
+
+   <span class="nx">setTimeout</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">_execute_script</span><span class="p">.</span><span class="nx">bind</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="nx">id</span><span class="p">,</span> <span class="nb">window</span><span class="p">,</span> <span class="nx">scripts</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">0</span><span class="p">);</span>
+<span class="p">};</span>
+
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_execute_script</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span> <span class="nb">window</span><span class="p">,</span> <span class="nx">scripts</span><span class="p">,</span> <span class="nx">index</span><span class="p">)</span> <span class="p">{</span>
+
+   <span class="k">if</span> <span class="p">(</span><span class="nx">index</span> <span class="o">&gt;=</span> <span class="nx">scripts</span><span class="p">.</span><span class="nx">length</span><span class="p">)</span> <span class="p">{</span> 
+
+      <span class="k">this</span><span class="p">.</span><span class="nx">_active_requests</span><span class="p">[</span><span class="nx">id</span><span class="p">].</span><span class="nx">scripts_executing</span> <span class="o">=</span> <span class="kc">false</span><span class="p">;</span>
+
+      <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;[&#39;</span> <span class="o">+</span> <span class="nx">id</span> <span class="o">+</span> <span class="s1">&#39;] finished executing inline scripts&#39;</span><span class="p">);</span></pre></div></td></tr><tr id="section-6"><td class="docs"><div class="pilwrap"><a href="#section-6" class="pilcrow">&#182;</a></div><p>as the scripts have finished executing we will given the extensions a timeout
+(in defined) until they will be aborted and the request completed</p>
+</td><td class="code"><div class="highlight"><pre>      <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">_extension_timeout</span><span class="p">)</span> <span class="p">{</span>
+         <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;[&#39;</span> <span class="o">+</span> <span class="nx">id</span> <span class="o">+</span> <span class="s1">&#39;] starting extension timeout for &#39;</span> <span class="o">+</span> <span class="k">this</span><span class="p">.</span><span class="nx">_extension_timeout</span> <span class="o">+</span> <span class="s1">&#39;ms&#39;</span><span class="p">);</span>
+
+         <span class="k">this</span><span class="p">.</span><span class="nx">_active_requests</span><span class="p">[</span><span class="nx">id</span><span class="p">].</span><span class="nx">timeout_id</span> <span class="o">=</span> 
+            <span class="nx">setTimeout</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">emit</span><span class="p">.</span><span class="nx">bind</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="s1">&#39;request:timeout&#39;</span><span class="p">,</span> <span class="nx">id</span><span class="p">),</span> <span class="k">this</span><span class="p">.</span><span class="nx">_extension_timeout</span><span class="p">);</span>
+      <span class="p">}</span>
+      
+      <span class="k">this</span><span class="p">.</span><span class="nx">_extension_done</span><span class="p">(</span><span class="s1">&#39;scripts&#39;</span><span class="p">,</span> <span class="nx">id</span><span class="p">);</span>
+
+   <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+
+      <span class="k">try</span> <span class="p">{</span>
+
+         <span class="nb">window</span><span class="p">.</span><span class="nx">run</span><span class="p">(</span><span class="nx">scripts</span><span class="p">[</span><span class="nx">index</span><span class="p">].</span><span class="nx">source</span><span class="p">,</span> <span class="nx">scripts</span><span class="p">[</span><span class="nx">index</span><span class="p">].</span><span class="nx">path</span><span class="p">);</span>
+
+         <span class="nx">setTimeout</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">_execute_script</span><span class="p">.</span><span class="nx">bind</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="nx">id</span><span class="p">,</span> <span class="nb">window</span><span class="p">,</span> <span class="nx">scripts</span><span class="p">,</span> <span class="nx">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="mi">0</span><span class="p">);</span>
+
+      <span class="p">}</span> <span class="k">catch</span><span class="p">(</span><span class="nx">ex</span><span class="p">)</span> <span class="p">{</span>
+         <span class="k">this</span><span class="p">.</span><span class="nx">_request_script_error</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span> <span class="nx">ex</span><span class="p">,</span> <span class="nx">scripts</span><span class="p">[</span><span class="nx">index</span><span class="p">]);</span>
+      <span class="p">}</span>
+   <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_serve_script</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">match</span><span class="p">,</span> <span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="p">{</span>
+
+   <span class="kd">var</span> <span class="nx">script</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">_template</span><span class="p">.</span><span class="nx">scripts</span><span class="p">[</span><span class="nx">match</span><span class="p">[</span><span class="mi">1</span><span class="p">]];</span>
+
+   <span class="k">if</span> <span class="p">(</span><span class="nx">script</span> <span class="o">&amp;&amp;</span> <span class="nx">script</span><span class="p">.</span><span class="nx">source</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">res</span><span class="p">.</span><span class="nx">setHeader</span><span class="p">(</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">,</span> <span class="s1">&#39;text/javascript; charset=utf-8&#39;</span><span class="p">);</span>
+      <span class="nx">res</span><span class="p">.</span><span class="nx">end</span><span class="p">(</span><span class="nx">script</span><span class="p">.</span><span class="nx">source</span><span class="p">,</span> <span class="s1">&#39;utf8&#39;</span><span class="p">);</span>
+   <span class="p">}</span>
+
+   <span class="k">return</span> <span class="o">!!</span><span class="nx">script</span><span class="p">;</span>
+
+<span class="p">};</span>
+   
+
+
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_build_location</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">request</span><span class="p">,</span> <span class="nx">data</span><span class="p">)</span> <span class="p">{</span>
+   <span class="kd">var</span> <span class="nx">url</span> <span class="o">=</span> <span class="nx">request</span><span class="p">.</span><span class="nx">url</span><span class="p">,</span>
+       <span class="nx">location</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">String</span><span class="p">(</span><span class="s2">&quot;http://&quot;</span> <span class="o">+</span> <span class="nx">request</span><span class="p">.</span><span class="nx">headers</span><span class="p">.</span><span class="nx">host</span> <span class="o">+</span> <span class="nx">url</span><span class="p">);</span>
+
+   <span class="nx">location</span><span class="p">.</span><span class="nx">hash</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">;</span>  <span class="c1">// need to address</span>
+   <span class="nx">location</span><span class="p">.</span><span class="nx">host</span> <span class="o">=</span> <span class="nx">request</span><span class="p">.</span><span class="nx">headers</span><span class="p">.</span><span class="nx">host</span><span class="p">;</span>
+   <span class="nx">location</span><span class="p">.</span><span class="nx">href</span> <span class="o">=</span> <span class="s2">&quot;http://&quot;</span> <span class="o">+</span> <span class="nx">request</span><span class="p">.</span><span class="nx">headers</span><span class="p">.</span><span class="nx">host</span> <span class="o">+</span> <span class="nx">url</span><span class="p">;</span>
+   <span class="nx">location</span><span class="p">.</span><span class="nx">pathname</span> <span class="o">=</span> <span class="nx">url</span><span class="p">;</span>
+   <span class="nx">location</span><span class="p">.</span><span class="nx">protocol</span> <span class="o">=</span> <span class="s1">&#39;http:&#39;</span><span class="p">;</span>
+
+   <span class="k">if</span> <span class="p">(</span><span class="nx">url</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="s2">&quot;?&quot;</span><span class="p">)</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">location</span><span class="p">.</span><span class="nx">search</span> <span class="o">=</span> <span class="nx">url</span><span class="p">.</span><span class="nx">substring</span><span class="p">(</span><span class="nx">url</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="s2">&quot;?&quot;</span><span class="p">));</span>
+   <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="nx">location</span><span class="p">.</span><span class="nx">search</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">;</span>
+   <span class="p">}</span>
+
+   <span class="kd">var</span> <span class="nx">split_host</span> <span class="o">=</span> <span class="nx">request</span><span class="p">.</span><span class="nx">headers</span><span class="p">.</span><span class="nx">host</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">);</span>
+   <span class="nx">location</span><span class="p">.</span><span class="nx">hostname</span> <span class="o">=</span> <span class="nx">split_host</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+   <span class="nx">location</span><span class="p">.</span><span class="nx">port</span> <span class="o">=</span> <span class="nx">split_host</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span></pre></div></td></tr><tr id="section-7"><td class="docs"><div class="pilwrap"><a href="#section-7" class="pilcrow">&#182;</a></div><p>extra properties</p>
+</td><td class="code"><div class="highlight"><pre>   <span class="nx">location</span><span class="p">.</span><span class="nx">method</span> <span class="o">=</span> <span class="nx">request</span><span class="p">.</span><span class="nx">method</span><span class="p">.</span><span class="nx">toUpperCase</span><span class="p">();</span>
+
+   <span class="k">if</span> <span class="p">(</span><span class="nx">request</span><span class="p">.</span><span class="nx">headers</span><span class="p">[</span><span class="s1">&#39;content-type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;application/x-www-form-urlencoded&#39;</span> <span class="o">&amp;&amp;</span> <span class="nx">data</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">var</span> <span class="nx">params</span> <span class="o">=</span> <span class="nx">data</span><span class="p">.</span><span class="nx">toString</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">),</span> <span class="nx">match</span><span class="p">;</span>
+
+      <span class="nx">location</span><span class="p">.</span><span class="nx">form</span> <span class="o">=</span> <span class="p">{</span> <span class="p">};</span>
+
+      <span class="k">while</span> <span class="p">(</span><span class="nx">match</span> <span class="o">=</span> <span class="sr">/([a-zA-z0-9]+)=([a-zA-Z0-9]+)/</span><span class="p">.</span><span class="nx">exec</span><span class="p">(</span><span class="nx">params</span><span class="p">))</span> <span class="p">{</span>
+         <span class="nx">location</span><span class="p">.</span><span class="nx">form</span><span class="p">[</span><span class="nx">match</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="nx">match</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+
+         <span class="nx">params</span> <span class="o">=</span> <span class="nx">params</span><span class="p">.</span><span class="nx">substr</span><span class="p">(</span><span class="nx">match</span><span class="p">.</span><span class="nx">index</span> <span class="o">+</span> <span class="nx">match</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">length</span><span class="p">);</span>
+      <span class="p">}</span>
+   <span class="p">}</span>
+
+   <span class="k">return</span> <span class="nx">location</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_build_navigator</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">request</span><span class="p">)</span> <span class="p">{</span>
+   <span class="kd">var</span> <span class="nx">navigator</span> <span class="o">=</span> <span class="p">{</span> <span class="p">};</span>
+
+   <span class="nx">navigator</span><span class="p">.</span><span class="nx">server</span> <span class="o">=</span> <span class="kc">true</span><span class="p">;</span>
+   <span class="nx">navigator</span><span class="p">.</span><span class="nx">userAgent</span> <span class="o">=</span> <span class="s1">&#39;WebKit/1.0&#39;</span><span class="p">;</span>
+
+   <span class="k">return</span> <span class="nx">navigator</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_add_timing</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">request_id</span><span class="p">,</span> <span class="nb">window</span><span class="p">)</span> <span class="p">{</span>
+
+   <span class="kd">var</span> <span class="nx">running_timeouts</span> <span class="o">=</span> <span class="p">[</span> <span class="p">],</span>
+       <span class="nx">running_intervals</span> <span class="o">=</span> <span class="p">[</span> <span class="p">],</span>
+       <span class="nx">that</span> <span class="o">=</span> <span class="k">this</span><span class="p">;</span>
+
+   <span class="nb">window</span><span class="p">.</span><span class="nx">setTimeout</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">fn</span><span class="p">,</span> <span class="nx">timeout</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">var</span> <span class="nx">timeout_id</span><span class="p">,</span>
+          <span class="nx">id</span> <span class="o">=</span> <span class="s1">&#39;timeout:&#39;</span> <span class="o">+</span> <span class="nx">uuid</span><span class="p">();</span>
+
+      <span class="nx">that</span><span class="p">.</span><span class="nx">_inactive_extensions</span><span class="p">[</span><span class="nx">request_id</span><span class="p">].</span><span class="nx">push</span><span class="p">(</span><span class="nx">id</span><span class="p">);</span>
+      <span class="nx">that</span><span class="p">.</span><span class="nx">_extension_working</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span> <span class="nx">request_id</span><span class="p">);</span>
+     
+      <span class="nx">timeout_id</span> <span class="o">=</span> <span class="nx">setTimeout</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+         <span class="nx">fn</span><span class="p">.</span><span class="nx">apply</span><span class="p">(</span><span class="nb">window</span><span class="p">,</span> <span class="nx">arguments</span><span class="p">);</span>
+         <span class="nx">that</span><span class="p">.</span><span class="nx">_extension_done</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span> <span class="nx">request_id</span><span class="p">);</span>
+      <span class="p">},</span> <span class="nx">timeout</span><span class="p">);</span>
+
+      <span class="nx">running_timeouts</span><span class="p">[</span><span class="nx">id</span><span class="p">]</span> <span class="o">=</span> <span class="nx">timeout_id</span><span class="p">;</span>
+
+      <span class="k">return</span> <span class="nx">id</span><span class="p">;</span>
+   <span class="p">};</span>
+
+   <span class="nb">window</span><span class="p">.</span><span class="nx">clearTimeout</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">var</span> <span class="nx">timeout_id</span> <span class="o">=</span> <span class="nx">running_timeouts</span><span class="p">[</span><span class="nx">id</span><span class="p">];</span>
+      
+      <span class="k">if</span> <span class="p">(</span><span class="nx">timeout_id</span><span class="p">)</span> <span class="p">{</span>
+         <span class="nx">clearTimeout</span><span class="p">(</span><span class="nx">timeout_id</span><span class="p">);</span>
+
+         <span class="nx">that</span><span class="p">.</span><span class="nx">_extension_done</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span> <span class="nx">request_id</span><span class="p">);</span>
+      <span class="p">}</span>
+   <span class="p">};</span>
+
+   <span class="nb">window</span><span class="p">.</span><span class="nx">setInterval</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">fn</span><span class="p">,</span> <span class="nx">interval</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">var</span> <span class="nx">timeout_id</span><span class="p">,</span>
+          <span class="nx">id</span> <span class="o">=</span> <span class="s1">&#39;interval:&#39;</span> <span class="o">+</span> <span class="nx">uuid</span><span class="p">();</span>
+
+      <span class="nx">that</span><span class="p">.</span><span class="nx">_inactive_extensions</span><span class="p">[</span><span class="nx">request_id</span><span class="p">].</span><span class="nx">push</span><span class="p">(</span><span class="nx">id</span><span class="p">);</span>
+      <span class="nx">that</span><span class="p">.</span><span class="nx">_extension_working</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span> <span class="nx">request_id</span><span class="p">);</span>
+     
+      <span class="nx">interval_id</span> <span class="o">=</span> <span class="nx">setInterval</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+         <span class="nx">fn</span><span class="p">.</span><span class="nx">apply</span><span class="p">(</span><span class="nb">window</span><span class="p">,</span> <span class="nx">arguments</span><span class="p">);</span>
+      <span class="p">},</span> <span class="nx">interval</span><span class="p">);</span>
+
+      <span class="nx">running_intervals</span><span class="p">[</span><span class="nx">id</span><span class="p">]</span> <span class="o">=</span> <span class="nx">interval_id</span><span class="p">;</span>
+
+      <span class="k">return</span> <span class="nx">id</span><span class="p">;</span>
+   <span class="p">};</span>
+
+   <span class="nb">window</span><span class="p">.</span><span class="nx">clearInterval</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">var</span> <span class="nx">interval_id</span> <span class="o">=</span> <span class="nx">running_intervals</span><span class="p">[</span><span class="nx">id</span><span class="p">];</span>
+      
+      <span class="k">if</span> <span class="p">(</span><span class="nx">interval_id</span><span class="p">)</span> <span class="p">{</span>
+         <span class="nx">clearInterval</span><span class="p">(</span><span class="nx">interval_id</span><span class="p">);</span>
+
+         <span class="nx">that</span><span class="p">.</span><span class="nx">_extension_done</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span> <span class="nx">request_id</span><span class="p">);</span>
+      <span class="p">}</span>
+   <span class="p">};</span>
+
+<span class="p">};</span>
+
+
+<span class="nx">dommr</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_add_script_loading</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">request_id</span><span class="p">,</span> <span class="nb">window</span><span class="p">)</span> <span class="p">{</span>
+
+   <span class="kd">var</span> <span class="nx">that</span> <span class="o">=</span> <span class="k">this</span><span class="p">;</span>
+
+   <span class="nb">window</span><span class="p">.</span><span class="nb">document</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;DOMNodeInserted&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">ev</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">var</span> <span class="nx">elem</span> <span class="o">=</span> <span class="nx">ev</span><span class="p">.</span><span class="nx">target</span><span class="p">,</span>
+          <span class="nx">id</span><span class="p">;</span>
+
+      <span class="k">if</span> <span class="p">(</span><span class="nx">elem</span><span class="p">.</span><span class="nx">nodeName</span> <span class="o">===</span> <span class="s1">&#39;SCRIPT&#39;</span><span class="p">)</span> <span class="p">{</span>
+         <span class="nx">id</span> <span class="o">=</span> <span class="nx">elem</span><span class="p">.</span><span class="nx">__load_id</span> <span class="o">=</span> <span class="s1">&#39;script&#39;</span> <span class="o">+</span> <span class="nx">uuid</span><span class="p">();</span>
+         <span class="nx">that</span><span class="p">.</span><span class="nx">_inactive_extensions</span><span class="p">[</span><span class="nx">request_id</span><span class="p">].</span><span class="nx">push</span><span class="p">(</span><span class="nx">id</span><span class="p">);</span>
+         <span class="nx">that</span><span class="p">.</span><span class="nx">_extension_working</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span> <span class="nx">request_id</span><span class="p">);</span>
+
+         <span class="nx">elem</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;load&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">ev</span><span class="p">)</span> <span class="p">{</span>
+            <span class="nx">that</span><span class="p">.</span><span class="nx">_extension_done</span><span class="p">(</span><span class="nx">ev</span><span class="p">.</span><span class="nx">target</span><span class="p">.</span><span class="nx">__load_id</span><span class="p">,</span> <span class="nx">request_id</span><span class="p">);</span>
+         <span class="p">});</span>
+      <span class="p">}</span>
+   <span class="p">});</span>
+
+<span class="p">};</span>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<span class="nx">module</span><span class="p">.</span><span class="nx">exports</span> <span class="o">=</span> <span class="nx">dommr</span><span class="p">;</span>
+
+</pre></div></td></tr></tbody></table><div id="generated">generated Wed May 23 2012 00:50:03 GMT+0100 (BST)  </div></div></body></html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html><html><head><title>script.js</title><meta http-equiv="Content-Type" content="text/html" charset="UTF-8"><link rel="stylesheet" media="all" href="../docco.css"></head><body><div id="container"><div id="background"></div><div id="jump_to">Jump To &hellip;<div id="jump_wrapper"><div id="jump_page"><a href="../index.html" class="source"><span class="file_name">README</span></a><a href="../src/dommr.js.html" class="source "><span class="base_path">src / </span><span class="file_name">dommr.js</span></a><a href="../src/file.js.html" class="source "><span class="base_path">src / </span><span class="file_name">file.js</span></a><a href="../src/script.js.html" class="source selected"><span class="base_path">src / </span><span class="file_name">script.js</span></a><a href="../src/session/client-session.js.html" class="source "><span class="base_path">src / session / </span><span class="file_name">client-session.js</span></a><a href="../src/session/provider.js.html" class="source "><span class="base_path">src / session / </span><span class="file_name">provider.js</span></a><a href="../src/session/session.js.html" class="source "><span class="base_path">src / session / </span><span class="file_name">session.js</span></a><a href="../src/stylesheet.js.html" class="source "><span class="base_path">src / </span><span class="file_name">stylesheet.js</span></a><a href="../src/template/client-template.js.html" class="source "><span class="base_path">src / template / </span><span class="file_name">client-template.js</span></a><a href="../src/template/provider.js.html" class="source "><span class="base_path">src / template / </span><span class="file_name">provider.js</span></a><a href="../src/template.js.html" class="source "><span class="base_path">src / </span><span class="file_name">template.js</span></a><a href="../src/xmlhttprequest.js.html" class="source "><span class="base_path">src / </span><span class="file_name">xmlhttprequest.js</span></a></div></div></div><table cellpadding="0" cellspacing="0"><thead><tr><th class="docs"><h1>script.js</h1><div class="filepath">src/</div></th><th class="code"></th></tr></thead><tbody><tr id="section-1"><td class="docs"><div class="pilwrap"><a href="#section-1" class="pilcrow">&#182;</a></div>
+</td><td class="code"><div class="highlight"><pre><span class="kd">var</span> <span class="nx">File</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;./file.js&#39;</span><span class="p">);</span></pre></div></td></tr><tr id="section-2"><td class="docs"><div class="pilwrap"><a href="#section-2" class="pilcrow">&#182;</a></div><p>Script objects are used to manage scripts which are loaded from a template
+or added by extensions so that they can be executed for each request.
+If you provide a path and no source then the Script object will attempt 
+to load the source from the file at path.</p>
+</td><td class="code"><div class="highlight"><pre><span class="kd">function</span> <span class="nx">Script</span><span class="p">(</span><span class="nx">source</span><span class="p">,</span> <span class="nx">path</span><span class="p">,</span> <span class="nx">target</span><span class="p">,</span> <span class="nx">type</span><span class="p">,</span> <span class="nx">tag</span><span class="p">)</span> <span class="p">{</span>
+
+   <span class="k">this</span><span class="p">.</span><span class="nx">source</span> <span class="o">=</span> <span class="nx">source</span><span class="p">;</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">path</span> <span class="o">=</span> <span class="nx">path</span><span class="p">;</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">target</span> <span class="o">=</span> <span class="nx">target</span><span class="p">;</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">type</span> <span class="o">=</span> <span class="nx">type</span><span class="p">;</span>
+   <span class="k">this</span><span class="p">.</span><span class="nx">tag</span> <span class="o">=</span> <span class="nx">tag</span><span class="p">;</span>
+
+   <span class="k">if</span> <span class="p">(</span><span class="nx">path</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nx">source</span><span class="p">)</span> <span class="k">this</span><span class="p">.</span><span class="nx">load</span><span class="p">().</span><span class="nx">watch</span><span class="p">();</span>
+   <span class="k">else</span> <span class="p">{</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">_process_source</span><span class="p">();</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">generate_id</span><span class="p">();</span>
+   <span class="p">}</span>
+
+<span class="p">}</span>
+
+
+<span class="nx">require</span><span class="p">(</span><span class="s1">&#39;util&#39;</span><span class="p">).</span><span class="nx">inherits</span><span class="p">(</span><span class="nx">Script</span><span class="p">,</span> <span class="nx">File</span><span class="p">);</span></pre></div></td></tr><tr id="section-3"><td class="docs"><div class="pilwrap"><a href="#section-3" class="pilcrow">&#182;</a></div><p>Identifiers to show whether the code should be run souly on the client,
+server or on both sides</p>
+</td><td class="code"><div class="highlight"><pre><span class="nx">Script</span><span class="p">.</span><span class="nx">CLIENT</span> <span class="o">=</span> <span class="s1">&#39;client&#39;</span><span class="p">;</span>
+
+<span class="nx">Script</span><span class="p">.</span><span class="nx">SERVER</span> <span class="o">=</span> <span class="s1">&#39;server&#39;</span><span class="p">;</span>
+
+<span class="nx">Script</span><span class="p">.</span><span class="nx">BOTH</span> <span class="o">=</span> <span class="s1">&#39;both&#39;</span><span class="p">;</span></pre></div></td></tr><tr id="section-4"><td class="docs"><div class="pilwrap"><a href="#section-4" class="pilcrow">&#182;</a></div><p>Identifiers to indicate the type of script that has been loaded</p>
+</td><td class="code"><div class="highlight"><pre><span class="nx">Script</span><span class="p">.</span><span class="nx">JAVASCRIPT</span> <span class="o">=</span> <span class="s1">&#39;text/javascript&#39;</span><span class="p">;</span>
+
+<span class="nx">Script</span><span class="p">.</span><span class="nx">COFFEESCRIPT</span> <span class="o">=</span> <span class="s1">&#39;text/coffeescript&#39;</span><span class="p">;</span></pre></div></td></tr><tr id="section-5"><td class="docs"><div class="pilwrap"><a href="#section-5" class="pilcrow">&#182;</a></div><p>If the script isn't javascript then we need to convert it to javascript.</p>
+
+<p>If there is a tag related to this script item then we need to either replace
+the TextNode of the tag with the new source or generate an id and switch the
+src attr of the tag to point to this generated source</p>
+</td><td class="code"><div class="highlight"><pre><span class="nx">Script</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">_process_source</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+
+   <span class="kd">var</span> <span class="nx">compile</span><span class="p">,</span> <span class="nx">output</span><span class="p">;</span>
+
+   <span class="k">switch</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">type</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">case</span> <span class="nx">Script</span><span class="p">.</span><span class="nx">JAVASCRIPT</span><span class="o">:</span>
+         <span class="k">return</span><span class="p">;</span>
+      <span class="k">case</span> <span class="nx">Script</span><span class="p">.</span><span class="nx">COFFEESCRIPT</span><span class="o">:</span>
+         <span class="nx">compile</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;coffee-script&#39;</span><span class="p">).</span><span class="nx">compile</span><span class="p">;</span>
+         <span class="k">break</span><span class="p">;</span>
+   <span class="p">}</span>
+
+   <span class="k">if</span> <span class="p">(</span><span class="nx">compile</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">source</span> <span class="o">=</span> <span class="nx">compile</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">source</span><span class="p">);</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">type</span> <span class="o">=</span> <span class="nx">Script</span><span class="p">.</span><span class="nx">JAVASCRIPT</span><span class="p">;</span>
+
+      <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">tag</span><span class="p">)</span> <span class="p">{</span>
+         <span class="k">this</span><span class="p">.</span><span class="nx">tag</span><span class="p">.</span><span class="nx">setAttribute</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">,</span> <span class="nx">Script</span><span class="p">.</span><span class="nx">JAVASCRIPT</span><span class="p">);</span>
+
+         <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">tag</span><span class="p">.</span><span class="nx">src</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">this</span><span class="p">.</span><span class="nx">tag</span><span class="p">.</span><span class="nx">src</span> <span class="o">=</span> <span class="s1">&#39;/__dommr/script/&#39;</span> <span class="o">+</span> <span class="k">this</span><span class="p">.</span><span class="nx">id</span> <span class="o">+</span> <span class="s1">&#39;.js&#39;</span><span class="p">;</span>
+         <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="k">this</span><span class="p">.</span><span class="nx">tag</span><span class="p">.</span><span class="nx">childNodes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">nodeValue</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">source</span><span class="p">;</span>
+         <span class="p">}</span>
+      <span class="p">}</span>
+   <span class="p">}</span>
+
+<span class="p">};</span></pre></div></td></tr><tr id="section-6"><td class="docs"><div class="pilwrap"><a href="#section-6" class="pilcrow">&#182;</a></div><p>Inside of dommr we want to create script objects from a script element
+plucked from a jsdom document. Using this function you can pass an element
+and a base_path for resolving relative urls in the src attr. If the script
+tag has a path then the script will load and watch the script, in the case
+of an inline script we will be able to load the source straight out of the
+child TextNode of the script element and we will generate an id for the script</p>
+</td><td class="code"><div class="highlight"><pre><span class="nx">Script</span><span class="p">.</span><span class="nx">create_from_tag</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">tag</span><span class="p">,</span> <span class="nx">base_path</span><span class="p">)</span> <span class="p">{</span>
+
+   <span class="kd">var</span> <span class="nx">script_path</span><span class="p">,</span> <span class="nx">script_target</span><span class="p">,</span>
+       <span class="nx">source</span><span class="p">,</span> <span class="nx">path</span><span class="p">,</span> <span class="nx">target</span><span class="p">,</span> <span class="nx">type</span><span class="p">,</span> <span class="nx">tag</span><span class="p">;</span>
+      
+   <span class="k">if</span> <span class="p">(</span><span class="nx">tag</span><span class="p">.</span><span class="nx">src</span><span class="p">)</span> <span class="p">{</span> 
+      <span class="nx">path</span> <span class="o">=</span> <span class="nx">File</span><span class="p">.</span><span class="nx">resolve</span><span class="p">(</span><span class="nx">base_path</span><span class="p">,</span> <span class="nx">tag</span><span class="p">.</span><span class="nx">src</span><span class="p">);</span>
+   <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;Loading inline script&#39;</span><span class="p">);</span>
+      <span class="nx">source</span> <span class="o">=</span> <span class="nx">tag</span><span class="p">.</span><span class="nx">childNodes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">nodeValue</span><span class="p">;</span>
+   <span class="p">}</span>
+
+   <span class="nx">script_target</span> <span class="o">=</span> <span class="nx">tag</span><span class="p">.</span><span class="nx">getAttribute</span><span class="p">(</span><span class="s1">&#39;data-target&#39;</span><span class="p">);</span>
+   <span class="nx">target</span> <span class="o">=</span> <span class="p">(</span><span class="o">!</span><span class="nx">script_target</span> <span class="o">&amp;&amp;</span> 
+              <span class="nx">script_target</span> <span class="o">!==</span> <span class="nx">Script</span><span class="p">.</span><span class="nx">CLIENT</span> <span class="o">&amp;&amp;</span> 
+              <span class="nx">script_target</span> <span class="o">!==</span> <span class="nx">Script</span><span class="p">.</span><span class="nx">SERVER</span><span class="p">)</span> <span class="o">?</span> <span class="nx">Script</span><span class="p">.</span><span class="nx">BOTH</span> <span class="o">:</span> <span class="nx">script_target</span><span class="p">;</span>
+   <span class="nx">type</span> <span class="o">=</span> <span class="nx">tag</span><span class="p">.</span><span class="nx">getAttribute</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">);</span> 
+
+   <span class="k">return</span> <span class="k">new</span> <span class="nx">Script</span><span class="p">(</span><span class="nx">source</span><span class="p">,</span> <span class="nx">path</span><span class="p">,</span> <span class="nx">target</span><span class="p">,</span> <span class="nx">type</span><span class="p">,</span> <span class="nx">tag</span><span class="p">);</span>
+   
+<span class="p">};</span>
+
+
+
+
+
+<span class="nx">module</span><span class="p">.</span><span class="nx">exports</span> <span class="o">=</span> <span class="nx">Script</span><span class="p">;</span>
+
+</pre></div></td></tr></tbody></table><div id="generated">generated Wed May 23 2012 00:50:04 GMT+0100 (BST)  </div></div></body></html>

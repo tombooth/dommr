@@ -1,0 +1,27 @@
+<!DOCTYPE HTML>
+
+<html>
+   <head>
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <title>Session</title>
+   </head>
+
+   <body>
+      Your name is <input type="text" id="name" placeholder="your name here..." /><input type="button" id="set" value="set" />
+
+      <script type="text/javascript" charset="utf-8">
+
+         if (window.navigator.server) {
+            window.session.get('name', function(val) {
+               if (val) document.getElementById('name').value = val;
+            });
+         }
+
+         document.getElementById('set').addEventListener('click', function() {
+            window.session.set('name', document.getElementById('name').value);
+         });
+
+      </script>
+   </body>
+</html>
