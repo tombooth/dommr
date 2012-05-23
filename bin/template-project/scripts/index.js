@@ -7,7 +7,7 @@
       },
 
       index: function() { 
-      }, 
+      }
 
    });
 

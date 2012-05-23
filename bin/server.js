@@ -1,32 +1,34 @@
+(function(express, fs, dommr) {
 
-var express = require('express'),
-    fs = require('fs'),
-    dommr = require('../src/dommr.js');
+   /**
+    * Starts an express server with the given path and port number, using
+    * dommr to handle requests.
+    * @param {String} path
+    * @param {Number} port
+    */
+   function start(path, port) {
+      var server = express.createServer(),
+          stat = fs.lstatSync(path);
 
+      if (stat.isDirectory()) {
 
+         server.use('/scripts', express.static(path + '/scripts'));
+         server.use('/css', express.static(path + '/css'));
+         server.use('/images', express.static(path + '/images'));
+         server.use(express.favicon(path + '/favicon.ico'));
 
-function start(path, port) {
-   var server = express.createServer(),
-       stat = fs.lstatSync(path);
+         path += '/index.html';
+      }
 
-   if (stat.isDirectory()) { 
-      server.use('/scripts', express.static(path + '/scripts'));
-      server.use('/css', express.static(path + '/css'));
-      server.use('/images', express.static(path + '/images'));
+      server.use(new dommr(path).middleware());
 
-      server.use(express.favicon(path + '/favicon.ico'));
-
-      path += '/index.html';
+      server.listen(port);
    }
 
-   server.use(new dommr(path).
-                     middleware());
+   module.exports = {
+      start: start
+   };
 
-   server.listen(port);
-}
+})(require('express'), fs = require('fs'), require('../src/dommr.js'));
 
 
-
-module.exports = {
-   start: start
-};

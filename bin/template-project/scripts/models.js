@@ -2,7 +2,6 @@
 
    var Models = { };
 
-
    window.Models = Models;
 
 })(Backbone);

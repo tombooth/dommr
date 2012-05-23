@@ -1,4 +1,3 @@
-
 (function(payload) {
 
    window.session.load = function(obj) {

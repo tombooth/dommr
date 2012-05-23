@@ -229,7 +229,6 @@ dommr.prototype._process_request = function(request, response) {
 
       that._exec_chain(that._pre_exec, [d_request], function() {
          console.log('[' + id + '] starting execution...');
-
          that._extension_working('scripts', id);
          that._execute_scripts(id, window);
       });
@@ -503,6 +502,10 @@ dommr.prototype._build_location = function(request, data) {
    return location;
 };
 
+/**
+ * Builds a simple navigator
+ * @param request
+ */
 dommr.prototype._build_navigator = function(request) {
    var navigator = { };
 
@@ -512,6 +515,12 @@ dommr.prototype._build_navigator = function(request) {
    return navigator;
 };
 
+/**
+ * Augments the standard window timeout and interval features
+ * to hook into the extensions.
+ * @param request_id
+ * @param window
+ */
 dommr.prototype._add_timing = function(request_id, window) {
 
    var running_timeouts = [ ],
