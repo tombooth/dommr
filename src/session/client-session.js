@@ -44,7 +44,6 @@
 
    }
 
-
    window.session.load(payload);
 
 })(window.session.__payload);

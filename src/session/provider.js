@@ -4,9 +4,6 @@ var uuid = require('node-uuid'),
     Script = require('../script.js'),
     memcached = require('memcached');
 
-
-
-
 function SessionProvider(options) {
 
    options = options || { };
@@ -25,7 +22,6 @@ require('util').inherits(SessionProvider, require('events').EventEmitter);
 SessionProvider.COOKIE_REGEX = /sessionId=([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/;
 
 SessionProvider.SYNC_REGEX = /session\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\//;
-
 
 SessionProvider._mount_path = null;
 
@@ -136,9 +132,5 @@ SessionProvider.prototype._get_id = function(d_request) {
    return id;
 
 };
-
-
-
-
 
 module.exports = SessionProvider;

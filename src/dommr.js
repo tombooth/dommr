@@ -438,15 +438,17 @@ dommr.prototype._request_script_error = function(id, error, script) {
        lines = script.source.split('\n'),
        context_lines = [];
 
+    // print out the context around a given line
    for (var i = line_num - 3; i <= line_num + 2; i++) {
-      if (i < 0 || i > lines.length) {
-         continue;
-      } else {
-         context_lines.push(i + ': ' + lines[i]);
-      }
+       if (i >= 0 && i < lines.length) {
+           context_lines.push(i + ': ' + lines[i]);
+       }
    }
 
-   this._request_send(id, '<pre>' + context_lines.join('\n') + '\n\n' + error.stack + '</pre>');
+    var response = '<h1>Script Error</h1><p>An error occurred on line ' + line_num  + ' of ' + script.path + '</p>';
+    response += '<pre>' + context_lines.join('\n') + '\n\n' + error.stack + '</pre>';
+
+   this._request_send(id, response);
 };
 
 dommr.prototype._serve_script = function(match, req, res) {
@@ -484,7 +486,6 @@ dommr.prototype._build_location = function(request, data) {
    location.port = split_host[1];
 
    // extra properties
-   //
    location.method = request.method.toUpperCase();
 
    if (request.headers['content-type'] == 'application/x-www-form-urlencoded' && data) {
