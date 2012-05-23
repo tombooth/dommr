@@ -1,7 +1,7 @@
-(function(Backbone, $) {
+(function() {
 
    var Views = { };
 
    window.Views = Views;
 
-})(Backbone, jQuery);
+})();

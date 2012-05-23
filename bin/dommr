@@ -1,12 +1,16 @@
 #!/usr/bin/env node
 
 var cli = require('cli'),
-    exec = require('child_process').exec;
+    exec = require('child_process').exec,
+    path = require('path');
 
 var commands = {
 
    create: function(args, options) {
-      var target_path = require('path').resolve(process.cwd(), args[0]),
+
+      console.log("Creating" , args[0]);
+
+      var target_path = path.resolve(process.cwd(), args[0]),
           source_path = __dirname + '/template-project/*';
 
       exec('cp -r ' + source_path + ' ' + target_path, function(err, stdout, stderr) {
@@ -18,7 +22,10 @@ var commands = {
    },
 
    start: function(args, options) {
-      require('./server.js').start(require('path').resolve(process.cwd(), args[0]), options.port);
+
+      console.log("Starting" , args[0]);   
+
+      require('./server.js').start(path.resolve(process.cwd(), args[0]), options.port);
    }
 
 };

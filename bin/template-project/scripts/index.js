@@ -1,5 +1,4 @@
-
-(function($, _, Backbone, Models, Views) {
+(function($, Backbone, Models, Views) {
 
    var App = Backbone.Router.extend({
       routes: {
@@ -15,4 +14,4 @@
 
    Backbone.history.start({ pushState: true });
 
-})($, _, Backbone, Models, Views);
+})(jQuery, Backbone, Models, Views);

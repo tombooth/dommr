@@ -175,7 +175,7 @@ dommr.prototype.middleware = function() {
  * @param response
  */
 dommr.prototype._process_request = function(request, response) {
-   var id = uuid(),
+   var id = uuid(), // Generates a RFC4122 v1 (timestamp-based) UUID.
        that = this,
        data;
 
