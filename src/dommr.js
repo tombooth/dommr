@@ -4,19 +4,26 @@ var fs = require('fs'),
     uuid = require('node-uuid'),
     Template = require('./template.js'),
     Script = require('./script.js'),
+    EventEmitter = require('events').EventEmitter,
     XMLHttpRequest = require('./xmlhttprequest');
 
-
-
+/**
+ * Sets options, creates a template from the path
+ * @constructor
+ * @param {String} path The file path for the template
+ * @param {Object} options
+ */
 function dommr(path, options) {
    options = options || { };
 
    this._extension_timeout = options.extension_timeout || 0;
    this._mount_path = options.mount_path || '/__dommr';
-
    this._mounted_regex = new RegExp(this._mount_path + '/(.+)');
-   this._template = new Template(path, this._mount_path);
-   this._intercepts = [ { regex: /\/script\/([a-zA-Z0-9]+)/, fn: this._serve_script.bind(this) } ];
+
+   this._intercepts = [
+      { regex: /\/script\/([a-zA-Z0-9]+)/, fn: this._serve_script.bind(this) }
+   ];
+
    this._registered_extensions = [ 'scripts' ];
    this._active_extensions = { };
    this._inactive_extensions = { };
@@ -24,16 +31,16 @@ function dommr(path, options) {
    this._pre_exec = [ ];
    this._post_exec = [ ];
 
+   this._template = new Template(path, this._mount_path);
    this._template.on('scripts:pre', this.emit.bind(this, 'template:scripts:pre'));
    this._template.on('scripts:post', this.emit.bind(this, 'template:scripts:post'));
+
 }
 
+require('util').inherits(dommr, EventEmitter);
 
-require('util').inherits(dommr, require('events').EventEmitter);
 
-
-// Include the included extensions as properties on the
-// main constructor
+// TODO: Include these included extensions as properties on the main constructor
 
 dommr.Session = require('./session/provider.js');
 
@@ -48,21 +55,44 @@ dommr.prototype._active_extensions = null;
 
 dommr.prototype._inactive_extensions = null;
 
+/**
+ *
+ * @type {Number} default = 0
+ */
 dommr.prototype._extension_timeout = null;
 
+/**
+ *
+ * @type {String} default = "/__dommr"
+ */
 dommr.prototype._mount_path = null;
 
+/**
+ * A regular expression to match all incoming request urls. All
+ * urls must match this expression in order to be handled by
+ * the dommr intercepts.
+ * @type {RegExp}
+ */
 dommr.prototype._mounted_regex = null;
 
+/**
+ *
+ * @type {Template}
+ */
 dommr.prototype._template = null;
 
 dommr.prototype._intercepts = null;
 
-
-
+/**
+ * Registers an extension
+ * // TODO: How/Where is this used?
+ * @param extension
+ */
 dommr.prototype.register = function(extension) {
 
-   if (!extension.register) throw new Error('Not a valid dommr extention');
+   if (!extension.register) {
+      throw new Error('Not a valid dommr extention');
+   }
 
    extension.register(this, this._mount_path);
    extension.on('working', this._extension_working.bind(this, extension));
@@ -75,10 +105,30 @@ dommr.prototype.register = function(extension) {
 
 };
 
+/**
+ * Registers an intercept, which is a function that is called when
+ * the supplied regular expression matches an incoming url.
+ *
+ * @param {RegExp} regex A regular expression that should match a particular url pattern
+ * @param {Function} fn A function to execute if the regular expression matches the url
+ */
 dommr.prototype.register_intercept = function(regex, fn) {
-   this._intercepts.push({ regex: regex, fn: fn });
+   this._intercepts.push({
+      regex: regex,
+      fn: fn
+   });
 };
 
+/**
+ * Initialises dommr by loading the template and returning a "servlet" function
+ * to process requests.
+ *
+ * If the incoming request url matches the mounted regex the function looks over
+ * the registered intercepts and runs any that match the incoming url.
+ *
+ * Otherwise the function calls the process_request method
+ * @returns {Function} The dommr middleware "servlet" function
+ */
 dommr.prototype.middleware = function() {
 
    console.log('Loading app...');
@@ -87,89 +137,57 @@ dommr.prototype.middleware = function() {
 
    console.log('Done.\n');
 
-   return (function(req, res, next) {
-      var url = req.url,
+   return (function(request, response, next) {
+      var url = request.url,
           mounted_path_match = this._mounted_regex.exec(url),
           mounted_path = (mounted_path_match) ? mounted_path_match[1] : null,
           intercepts = this._intercepts,
           match, intercept, served = false;
 
       if (mounted_path) {
+
          for (var i = 0, len = intercepts.length; i < len && !served; i++) {
             intercept = intercepts[i];
-            match = intercept.regex.exec(req.url);
+            match = intercept.regex.exec(request.url);
 
             if (match) {
                console.log('serving', intercept);
-               served = intercept.fn(match, req, res);
+               served = intercept.fn(match, request, response);
             }
          }
 
-         if (!served) res.end();
+         // TODO: served will only be set to the return value of the last intercept. Is this intended?
+         if (!served) {
+            response.end();
+         }
 
       } else {
-         this._process_request(req, res);
+         this._process_request(request, response);
       }
 
    }).bind(this);
 
 };
 
-
-
-
-
-dommr.prototype._extension_working = function(extension, id) {
-   var index = this._inactive_extensions[id].indexOf(extension);
-
-   if (index >= 0) {
-      console.log('[' + id + '] ' + ((extension.substr) ? extension : extension.constructor.name) + ' is working');
-      this._inactive_extensions[id].splice(index, 1);
-   }
-
-   this._active_extensions[id].push(extension);
-};
-
-dommr.prototype._extension_done = function(extension, id) {
-   var index = this._active_extensions[id].indexOf(extension);
-
-   if (index >= 0) {
-      this._active_extensions[id].splice(index, 1);
-   } 
-
-   index = this._active_extensions[id].indexOf(extension);
-
-   if (index < 0) {
-      console.log('[' + id + '] ' + ((extension.substr) ? extension : extension.constructor.name) + ' is done');
-      this._inactive_extensions[id].push(extension);
-   }
-
-   if (!this._active_requests[id].scripts_executing && 
-         this._active_extensions[id].length === 0) this._request_complete(id);
-};
-
-dommr.prototype._extension_error = function(extension, id, error) {
-   this._request_internal_error(id, error);
-};
-
-
-
-
-
-
-
-
+/**
+ * Processes a request for any url that does not match mounted_regex.
+ * @param request
+ * @param response
+ */
 dommr.prototype._process_request = function(request, response) {
-   var id = uuid(), 
+   var id = uuid(),
        that = this,
        data;
 
-   console.log('[' + id +'] request starting: ' + request.url);
-   
+   console.log('[' + id + '] request starting: ' + request.url);
+
+   //make the inactive extensions a copy of the registered extensions
    this._inactive_extensions[id] = this._registered_extensions.slice(0);
    this._active_extensions[id] = [ ];
 
-   request.on('data', function(d) { data = (data) ? data + d : d; });
+   request.on('data', function(d) {
+      data = (data) ? data + d : d;
+   });
    request.on('end', function() {
 
       /*
@@ -183,7 +201,12 @@ dommr.prototype._process_request = function(request, response) {
       window.console = console;
       window.location = that._build_location(request, data);
       window.navigator = that._build_navigator(request);
-      window.history = { pushState: function() { } };
+
+      window.history = {
+         // TODO: Intended as noop?
+         pushState: function() {
+         }
+      };
 
       window.XMLHttpRequest = function() {
 
@@ -214,16 +237,62 @@ dommr.prototype._process_request = function(request, response) {
    });
 };
 
+dommr.prototype._extension_working = function(extension, id) {
+   var index = this._inactive_extensions[id].indexOf(extension);
+
+   if (index >= 0) {
+      console.log('[' + id + '] ' + ((extension.substr) ? extension : extension.constructor.name) + ' is working');
+      this._inactive_extensions[id].splice(index, 1);
+   }
+
+   this._active_extensions[id].push(extension);
+};
+
+dommr.prototype._extension_done = function(extension, id) {
+   var index = this._active_extensions[id].indexOf(extension);
+
+   if (index >= 0) {
+      this._active_extensions[id].splice(index, 1);
+   }
+
+   index = this._active_extensions[id].indexOf(extension);
+
+   if (index < 0) {
+      console.log('[' + id + '] ' + ((extension.substr) ? extension : extension.constructor.name) + ' is done');
+      this._inactive_extensions[id].push(extension);
+   }
+
+   if (!this._active_requests[id].scripts_executing &&
+       this._active_extensions[id].length === 0) this._request_complete(id);
+};
+
+dommr.prototype._extension_error = function(extension, id, error) {
+   this._request_internal_error(id, error);
+};
+
+/**
+ * An array of functions
+ * @type {Function[]}
+ */
 dommr.prototype._pre_exec = null;
+
+/**
+ * An array of functions
+ * @type {Function[]}
+ */
 dommr.prototype._post_exec = null;
 
 dommr.prototype._exec_chain = function(arr, args, done) {
    var fns_to_go = arr.length;
 
-   if (arr.length === 0) done();
+   if (arr.length === 0) {
+      done();
+   }
 
    args.push(function() {
-      if (--fns_to_go === 0) done();
+      if (--fns_to_go === 0) {
+         done();
+      }
    });
 
    for (var i = 0, l = arr.length; i < l; i++) {
@@ -231,14 +300,18 @@ dommr.prototype._exec_chain = function(arr, args, done) {
    }
 };
 
-dommr.prototype.register_pre_exec = function(fn) { this._pre_exec.push(fn); }; 
-dommr.prototype.register_post_exec = function(fn) { this._post_exec.push(fn); }; 
+dommr.prototype.register_pre_exec = function(fn) {
+   this._pre_exec.push(fn);
+};
 
+dommr.prototype.register_post_exec = function(fn) {
+   this._post_exec.push(fn);
+};
 
-
-
-
-
+/**
+ *
+ * @param {Number} id The uuid for the request
+ */
 dommr.prototype._request_complete = function(id) {
    var request = this._active_requests[id],
        window = request.window;
@@ -248,7 +321,9 @@ dommr.prototype._request_complete = function(id) {
 
    // if we have a timeout on the extensions then stop it from
    // executing after the request has been completed
-   if (request.timeout_id) clearTimeout(request.timeout_id);
+   if (request.timeout_id) {
+      clearTimeout(request.timeout_id);
+   }
 
    console.log('[' + id + '] finished execution');
 
@@ -257,39 +332,29 @@ dommr.prototype._request_complete = function(id) {
 
       console.log('[' + id + '] request completed');
    }).bind(this));
-   
+
 };
 
 
-
+/**
+ * Called when an extension has an error
+ * @param {Number} id The uuid for the request
+ * @param {Error} error The error that was thrown
+ */
 dommr.prototype._request_internal_error = function(id, error) {
+
+   var request = this._active_requests[id];
 
    // if we have a timeout on the extensions then stop it from
    // executing after the request has been completed
-   if (request.timeout_id) clearTimeout(request.timeout_id);
+   if (request.timeout_id) {
+      clearTimeout(request.timeout_id);
+   }
 
    this._request_send(id, this._error_template_html.replace('{{error_message}}', error.toString()));
 
    console.log('[' + id + '] request completed with an error');
 
-};
-
-
-dommr.prototype._request_script_error = function(id, exception, script) {
-   console.log(exception);
-   var line_match = +/:([0-9]+):[0-9]+/.exec(exception.stack),
-       line_num = (line_match && line_match.length >= 2) ? line_match[1] : 0,
-       lines = script.source.split('\n'),
-       context_lines = [];
-
-   for (var i = line_num - 3; i <= line_num + 2; i++) {
-      if (i < 0 || i > lines.length) continue;
-      else {
-         context_lines.push(i + ': ' + lines[i]);
-      }
-   }
-
-   this._request_send(id, '<pre>' + context_lines.join('\n') + '\n\n' + exception.stack + '</pre>');
 };
 
 
@@ -311,10 +376,6 @@ dommr.prototype._request_send = function(id, content) {
 };
 
 
-
-
-
-
 dommr.prototype._execute_scripts = function(id, window) {
    var scripts = this._template.server_scripts;
 
@@ -325,9 +386,16 @@ dommr.prototype._execute_scripts = function(id, window) {
 };
 
 
+/**
+ * Executes an array of scripts, one after the other
+ * @param id
+ * @param window
+ * @param {Script[]} scripts An array of scripts
+ * @param {Number} index The index of the script to run
+ */
 dommr.prototype._execute_script = function(id, window, scripts, index) {
 
-   if (index >= scripts.length) { 
+   if (index >= scripts.length) {
 
       this._active_requests[id].scripts_executing = false;
 
@@ -338,10 +406,10 @@ dommr.prototype._execute_script = function(id, window, scripts, index) {
       if (this._extension_timeout) {
          console.log('[' + id + '] starting extension timeout for ' + this._extension_timeout + 'ms');
 
-         this._active_requests[id].timeout_id = 
-            setTimeout(this.emit.bind(this, 'request:timeout', id), this._extension_timeout);
+         this._active_requests[id].timeout_id =
+             setTimeout(this.emit.bind(this, 'request:timeout', id), this._extension_timeout);
       }
-      
+
       this._extension_done('scripts', id);
 
    } else {
@@ -358,6 +426,30 @@ dommr.prototype._execute_script = function(id, window, scripts, index) {
    }
 };
 
+/**
+ * Prints out a stacktrace and context of a script that had an error
+ * @param id
+ * @param {Error} error
+ * @param {Script} script The script that was being run
+ */
+dommr.prototype._request_script_error = function(id, error, script) {
+   console.log(error);
+   var line_match = +/:([0-9]+):[0-9]+/.exec(error.stack),
+       line_num = (line_match && line_match.length >= 2) ? line_match[1] : 0,
+       lines = script.source.split('\n'),
+       context_lines = [];
+
+   for (var i = line_num - 3; i <= line_num + 2; i++) {
+      if (i < 0 || i > lines.length) {
+         continue;
+      } else {
+         context_lines.push(i + ': ' + lines[i]);
+      }
+   }
+
+   this._request_send(id, '<pre>' + context_lines.join('\n') + '\n\n' + error.stack + '</pre>');
+};
+
 dommr.prototype._serve_script = function(match, req, res) {
 
    var script = this._template.scripts[match[1]];
@@ -370,8 +462,6 @@ dommr.prototype._serve_script = function(match, req, res) {
    return !!script;
 
 };
-   
-
 
 
 dommr.prototype._build_location = function(request, data) {
@@ -395,7 +485,7 @@ dommr.prototype._build_location = function(request, data) {
    location.port = split_host[1];
 
    // extra properties
-   // 
+   //
    location.method = request.method.toUpperCase();
 
    if (request.headers['content-type'] == 'application/x-www-form-urlencoded' && data) {
@@ -434,7 +524,7 @@ dommr.prototype._add_timing = function(request_id, window) {
 
       that._inactive_extensions[request_id].push(id);
       that._extension_working(id, request_id);
-     
+
       timeout_id = setTimeout(function() {
          fn.apply(window, arguments);
          that._extension_done(id, request_id);
@@ -447,7 +537,7 @@ dommr.prototype._add_timing = function(request_id, window) {
 
    window.clearTimeout = function(id) {
       var timeout_id = running_timeouts[id];
-      
+
       if (timeout_id) {
          clearTimeout(timeout_id);
 
@@ -461,7 +551,7 @@ dommr.prototype._add_timing = function(request_id, window) {
 
       that._inactive_extensions[request_id].push(id);
       that._extension_working(id, request_id);
-     
+
       interval_id = setInterval(function() {
          fn.apply(window, arguments);
       }, interval);
@@ -473,7 +563,7 @@ dommr.prototype._add_timing = function(request_id, window) {
 
    window.clearInterval = function(id) {
       var interval_id = running_intervals[id];
-      
+
       if (interval_id) {
          clearInterval(interval_id);
 
@@ -505,27 +595,4 @@ dommr.prototype._add_script_loading = function(request_id, window) {
 
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-module.exports = dommr;
-
-
-
-
+module.exports = dommr
