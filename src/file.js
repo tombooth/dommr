@@ -16,10 +16,13 @@ util.inherits(File, require('events').EventEmitter);
 
 
 /**
- *  A custom resolve function which should match path.resolve for all cases apart from
+ * A custom resolve function which should match path.resolve for all cases apart from
  * where rel_path starts with a / then it has a . added before it and then passed to path.resolve.
  * This is done so that we can use absolute paths in our template html for scripts and
  * stylesheets but have them resolve relative to the templates directory
+ * @static
+ * @param {String} base_path The base path for resolving a relative url
+ * @param {String} rel_path A path relative to the base path
  */
 File.resolve = function(base_path, rel_path) {
    return path.resolve(base_path, ((rel_path.charAt(0) === '/') ? '.' : '') + rel_path);
@@ -147,6 +150,7 @@ File.prototype._read = function() {
  * every time the file is read into the object
  * @abstract
  */
-File.prototype._process_source = function() {};
+File.prototype._process_source = function() {
+};
 
 module.exports = File;

@@ -1,38 +1,40 @@
+(function(File) {
 
+   /**
+    * @constructor
+    * @param {Element} tag
+    * @param {String} base_path
+    */
+   function Stylesheet(tag, base_path) {
 
-var File = require('./file.js');
+      this.tag = tag;
+      this.path = File.resolve(base_path, tag.href);
+      this.type = tag.getAttribute('type');
+      this.load().watch();
 
+   }
 
-function Stylesheet(tag, base_path) {
+   require('util').inherits(Stylesheet, File);
 
-   this.tag = tag;
-   this.path = File.resolve(base_path, tag.href);
-   this.type = tag.getAttribute('type'); 
+   // TODO: Not used?
+   Stylesheet.ID_REGEX = /([0-9a-f]{40})\.css/;
 
-   this.load().watch();
+   // TODO: Not used?
+   Stylesheet.CSS = 'text/css';
 
-}
+   /**
+    * The stylesheet element
+    * @type {Element}
+    */
+   Stylesheet.prototype.tag = null;
 
+   /**
+    * The type of stylesheet taken from the 'type' attribute
+    * on the element
+    */
+   Stylesheet.prototype.type = null;
 
-require('util').inherits(Stylesheet, File);
+   module.exports = Stylesheet;
 
-
-Stylesheet.ID_REGEX = /([0-9a-f]{40})\.css/;
-
-Stylesheet.CSS = 'text/css';
-
-
-
-Stylesheet.prototype.type = null;
-
-Stylesheet.prototype.tag = null;
-
-
-
-
-
-
-
-
-module.exports = Stylesheet;
+})(require('./file.js'));
 
