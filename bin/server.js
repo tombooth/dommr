@@ -14,7 +14,7 @@ function start(path, port) {
       server.use('/css', express.static(path + '/css'));
       server.use('/images', express.static(path + '/images'));
 
-      server.use(express.favicon(path + '/favicon.ico'));
+      server.use(express.favicon(path + '/images/favicon.ico'));
 
       path += '/index.html';
    }
