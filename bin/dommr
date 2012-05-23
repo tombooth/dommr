@@ -47,7 +47,7 @@ var commands = {
 };
 
 cli.parse({
-   port: ['p', 'Set the port to bind the webserver to', 'number', 8080],
+   port: ['p', 'Set the port to bind the webserver to', 'number', 8080]
 }, [
    'create',
    'start'

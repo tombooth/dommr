@@ -432,8 +432,9 @@ dommr.prototype._execute_script = function(id, window, scripts, index) {
  * @param {Script} script The script that was being run
  */
 dommr.prototype._request_script_error = function(id, error, script) {
-   console.log(error);
    var line_match = +/:([0-9]+):[0-9]+/.exec(error.stack),
+       // TODO: This gets the line number for the first item on the stack, which isn't necessarily the same
+       // as that in the script (which might be further down the stack trace)
        line_num = (line_match && line_match.length >= 2) ? line_match[1] : 0,
        lines = script.source.split('\n'),
        context_lines = [];

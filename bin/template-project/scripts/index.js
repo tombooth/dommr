@@ -2,10 +2,11 @@
 
    var App = Backbone.Router.extend({
       routes: {
-         '*': 'index'
+         '.*': 'index'
       },
 
-      index: function() { 
+      index: function() {
+          console.log("Index", arguments);
       }
 
    });
