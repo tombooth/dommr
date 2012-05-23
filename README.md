@@ -25,7 +25,10 @@ You'll need the following packages, installed using `npm install`
 Quick Start
 -----------
 
-`./bin/dommr -p 8080 start template-project`
+`
+cd bin
+./dommr -p 8080 start template-project
+`
 
 
 
