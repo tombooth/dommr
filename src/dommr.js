@@ -21,6 +21,7 @@ function dommr(path, options) {
    this._mounted_regex = new RegExp(this._mount_path + '/(.+)');
 
    this._intercepts = [
+       // TODO: _serve_script expects a request and response in the signature. Will this work?
       { regex: /\/script\/([a-zA-Z0-9]+)/, fn: this._serve_script.bind(this) }
    ];
 
@@ -70,7 +71,7 @@ dommr.prototype._mount_path = null;
 /**
  * A regular expression to match all incoming request urls. All
  * urls must match this expression in order to be handled by
- * the dommr intercepts.
+ * the dommr intercepts. Otherwise they are served as usual.
  * @type {RegExp}
  */
 dommr.prototype._mounted_regex = null;
@@ -175,15 +176,15 @@ dommr.prototype.middleware = function() {
  * @param response
  */
 dommr.prototype._process_request = function(request, response) {
-   var id = uuid(), // Generates a RFC4122 v1 (timestamp-based) UUID.
+   var request_id = uuid(), // Generates a RFC4122 v1 (timestamp-based) UUID.
        that = this,
        data;
 
-   console.log('[' + id + '] request starting: ' + request.url);
+   console.log('[' + request_id + '] request starting: ' + request.url);
 
    //make the inactive extensions a copy of the registered extensions
-   this._inactive_extensions[id] = this._registered_extensions.slice(0);
-   this._active_extensions[id] = [ ];
+   this._inactive_extensions[request_id] = this._registered_extensions.slice(0);
+   this._active_extensions[request_id] = [ ];
 
    request.on('data', function(d) {
       data = (data) ? data + d : d;
@@ -195,10 +196,11 @@ dommr.prototype._process_request = function(request, response) {
        */
       var window = that._template.create_window();
 
-      that._add_timing(id, window);
-      that._add_script_loading(id, window);
+      that._add_timing(request_id, window);
+      that._add_script_loading(request_id, window);
 
       window.console = console;
+      // todo: move this into a utility class?
       window.location = that._build_location(request, data);
       window.navigator = that._build_navigator(request);
 
@@ -212,25 +214,27 @@ dommr.prototype._process_request = function(request, response) {
 
          var xmlhttprequest = new XMLHttpRequest();
 
-         xmlhttprequest.once('working', that._extension_working.bind(that, xmlhttprequest, id));
-         xmlhttprequest.once('done', that._extension_done.bind(that, xmlhttprequest, id));
+         xmlhttprequest.once('working', that._extension_working.bind(that, xmlhttprequest, request_id));
+         xmlhttprequest.once('done', that._extension_done.bind(that, xmlhttprequest, request_id));
 
          return xmlhttprequest;
 
       };
 
-      var d_request = that._active_requests[id] = {
-         id: id,
+      // TODO: This should be in its own object so it could have
+      // send methods build in as functions which would be tidier.
+      var request_obj = that._active_requests[request_id] = {
+         id: request_id,
          request: request,
          response: response,
          window: window,
          scripts_executing: true
       };
 
-      that._exec_chain(that._pre_exec, [d_request], function() {
-         console.log('[' + id + '] starting execution...');
-         that._extension_working('scripts', id);
-         that._execute_scripts(id, window);
+      that._exec_chain(that._pre_exec, [request_obj], function() {
+         console.log('[' + request_id + '] starting execution...');
+         that._extension_working('scripts', request_id);
+         that._execute_scripts(request_id, window);
       });
 
    });
@@ -327,7 +331,7 @@ dommr.prototype._request_complete = function(id) {
    console.log('[' + id + '] finished execution');
 
    this._exec_chain(this._post_exec, [request], (function() {
-      this._request_send(id, window.document.innerHTML);
+      this._serve_html(id, window.document.innerHTML);
 
       console.log('[' + id + '] request completed');
    }).bind(this));
@@ -336,7 +340,7 @@ dommr.prototype._request_complete = function(id) {
 
 
 /**
- * Called when an extension has an error
+ * Called when an extension has an error. Sends an error response.
  * @param {Number} id The uuid for the request
  * @param {Error} error The error that was thrown
  */
@@ -350,66 +354,101 @@ dommr.prototype._request_internal_error = function(id, error) {
       clearTimeout(request.timeout_id);
    }
 
-   this._request_send(id, this._error_template_html.replace('{{error_message}}', error.toString()));
+   // TODO: _error_template_html is not defined
+   this._serve_html(id, this._error_template_html.replace('{{error_message}}', error.toString()));
 
    console.log('[' + id + '] request completed with an error');
 
 };
 
 
-dommr.prototype._request_send = function(id, content) {
-   var request = this._active_requests[id],
+/**
+ * Pushes HTML content as the response to a given request
+ * then removes the request from the active requests array.
+ * @param {Number} request_id The UUID of the request
+ * @param {String} html_content The HTML content
+ */
+dommr.prototype._serve_html = function(request_id, html_content) {
+   var request = this._active_requests[request_id],
        response = request.response;
 
    response.setHeader('Content-Type', 'text/html; charset=utf-8');
-   response.setHeader('Content-Length', content.length);
-   response.end(content, 'utf8');
+   response.setHeader('Content-Length', html_content.length);
+   // TODO: Also change the status code when used by request_internal_error?
+   response.end(html_content, 'utf8');
 
    request.window.close();
 
-   console.log('[' + id + '] request sent');
+   console.log('[' + request_id + '] request sent');
 
-   delete this._active_requests[id];
-   delete this._active_extensions[id];
-   delete this._inactive_extensions[id];
+   delete this._active_requests[request_id];
+   delete this._active_extensions[request_id];
+   delete this._inactive_extensions[request_id];
 };
 
 
-dommr.prototype._execute_scripts = function(id, window) {
+/**
+ * // TODO: This has different signature to _serve_html
+ * Pushes a script as the response to a given request
+ * @param match
+ * @param {HttpRequest} request
+ * @param {HttpResponse} response
+ * @return {Boolean} If the template had a script that matches the match
+ */
+dommr.prototype._serve_script = function(match, request, response) {
+
+   var script = this._template.scripts[match[1]];
+
+   if (script && script.source) {
+      response.setHeader('Content-Type', 'text/javascript; charset=utf-8');
+      response.end(script.source, 'utf8');
+   }
+
+   return !!script;
+
+};
+
+
+/**
+ * Executes all the scripts on the template.
+ * @param {Number} request_id The request UUID
+ * @param window
+ */
+dommr.prototype._execute_scripts = function(request_id, window) {
    var scripts = this._template.server_scripts;
 
    window.document.implementation.addFeature('FetchExternalResources', 'script');
    window.document.implementation.addFeature('ProcessExternalResources', 'script');
 
-   setTimeout(this._execute_script.bind(this, id, window, scripts, 0), 0);
+   var request_obj = this._active_requests[request_id];
+
+   setTimeout(this._execute_script.bind(this, request_obj, window, scripts, 0), 0);
 };
 
 
 /**
  * Executes an array of scripts, one after the other
- * @param id
+ * @param {Object} request_obj The request object (see creation in dommr._process_request)
  * @param window
  * @param {Script[]} scripts An array of scripts
  * @param {Number} index The index of the script to run
  */
-dommr.prototype._execute_script = function(id, window, scripts, index) {
+dommr.prototype._execute_script = function(request_obj, window, scripts, index) {
 
    if (index >= scripts.length) {
 
-      this._active_requests[id].scripts_executing = false;
+      request_obj.scripts_executing = false;
 
-      console.log('[' + id + '] finished executing inline scripts');
+      console.log('[' + request_obj.id + '] finished executing inline scripts');
 
       // as the scripts have finished executing we will given the extensions a timeout
       // (in defined) until they will be aborted and the request completed
       if (this._extension_timeout) {
-         console.log('[' + id + '] starting extension timeout for ' + this._extension_timeout + 'ms');
-
-         this._active_requests[id].timeout_id =
-             setTimeout(this.emit.bind(this, 'request:timeout', id), this._extension_timeout);
+         console.log('[' + request_obj.id + '] starting extension timeout for ' + this._extension_timeout + 'ms');
+         request_obj.timeout_id = setTimeout(this.emit.bind(this, 'request:timeout', request_obj.id), this._extension_timeout);
       }
 
-      this._extension_done('scripts', id);
+      this._extension_done('scripts', request_obj.id);
 
    } else {
 
@@ -417,10 +456,10 @@ dommr.prototype._execute_script = function(id, window, scripts, index) {
 
          window.run(scripts[index].source, scripts[index].path);
 
-         setTimeout(this._execute_script.bind(this, id, window, scripts, index + 1), 0);
+         setTimeout(this._execute_script.bind(this, request_obj, window, scripts, index + 1), 0);
 
       } catch(ex) {
-         this._request_script_error(id, ex, scripts[index]);
+         this._request_script_error(request_obj.id, ex, scripts[index]);
       }
    }
 };
@@ -433,36 +472,23 @@ dommr.prototype._execute_script = function(id, window, scripts, index) {
  */
 dommr.prototype._request_script_error = function(id, error, script) {
    var line_match = +/:([0-9]+):[0-9]+/.exec(error.stack),
-       // TODO: This gets the line number for the first item on the stack, which isn't necessarily the same
-       // as that in the script (which might be further down the stack trace)
+      // TODO: This gets the line number for the first item on the stack, which isn't necessarily the same
+      // as that in the script (which might be further down the stack trace)
        line_num = (line_match && line_match.length >= 2) ? line_match[1] : 0,
        lines = script.source.split('\n'),
        context_lines = [];
 
-    // print out the context around a given line
+   // print out the context around a given line
    for (var i = line_num - 3; i <= line_num + 2; i++) {
-       if (i >= 0 && i < lines.length) {
-           context_lines.push(i + ': ' + lines[i]);
-       }
+      if (i >= 0 && i < lines.length) {
+         context_lines.push(i + ': ' + lines[i]);
+      }
    }
 
-    var response = '<h1>Script Error</h1><p>An error occurred on line ' + line_num  + ' of ' + script.path + '</p>';
-    response += '<pre>' + context_lines.join('\n') + '\n\n' + error.stack + '</pre>';
+   var response = '<h1>Script Error</h1><p>An error occurred on line ' + line_num + ' of ' + script.path + '</p>';
+   response += '<pre>' + context_lines.join('\n') + '\n\n' + error.stack + '</pre>';
 
-   this._request_send(id, response);
-};
-
-dommr.prototype._serve_script = function(match, req, res) {
-
-   var script = this._template.scripts[match[1]];
-
-   if (script && script.source) {
-      res.setHeader('Content-Type', 'text/javascript; charset=utf-8');
-      res.end(script.source, 'utf8');
-   }
-
-   return !!script;
-
+   this._serve_html(id, response);
 };
 
 
