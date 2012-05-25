@@ -111,7 +111,6 @@
 
    };
 
-
    module.exports = Script;
 
 })(require('./file.js'));

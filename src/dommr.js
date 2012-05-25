@@ -4,6 +4,7 @@ var fs = require('fs'),
     uuid = require('node-uuid'),
     Template = require('./template.js'),
     Script = require('./script.js'),
+    Request = require('./request.js'),
     EventEmitter = require('events').EventEmitter,
     XMLHttpRequest = require('./xmlhttprequest');
 
@@ -172,24 +173,24 @@ dommr.prototype.middleware = function() {
 
 /**
  * Processes a request for any url that does not match mounted_regex.
- * @param request
- * @param response
+ * @param http_request
+ * @param http_response
  */
-dommr.prototype._process_request = function(request, response) {
+dommr.prototype._process_request = function(http_request, http_response) {
    var request_id = uuid(), // Generates a RFC4122 v1 (timestamp-based) UUID.
        that = this,
        data;
 
-   console.log('[' + request_id + '] request starting: ' + request.url);
+   console.log('[' + request_id + '] request starting: ' + http_request.url);
 
    //make the inactive extensions a copy of the registered extensions
    this._inactive_extensions[request_id] = this._registered_extensions.slice(0);
    this._active_extensions[request_id] = [ ];
 
-   request.on('data', function(d) {
+   http_request.on('data', function(d) {
       data = (data) ? data + d : d;
    });
-   request.on('end', function() {
+   http_request.on('end', function() {
 
       /*
        * Create the window object and augment global object
@@ -201,8 +202,8 @@ dommr.prototype._process_request = function(request, response) {
 
       window.console = console;
       // todo: move this into a utility class?
-      window.location = that._build_location(request, data);
-      window.navigator = that._build_navigator(request);
+      window.location = that._build_location(http_request, data);
+      window.navigator = that._build_navigator(http_request);
 
       window.history = {
          // TODO: Intended as noop?
@@ -223,13 +224,12 @@ dommr.prototype._process_request = function(request, response) {
 
       // TODO: This should be in its own object so it could have
       // send methods build in as functions which would be tidier.
-      var request_obj = that._active_requests[request_id] = {
-         id: request_id,
-         request: request,
-         response: response,
-         window: window,
-         scripts_executing: true
-      };
+      var request_obj = that._active_requests[request_id] = new Request(
+         request_id,
+         http_request,
+         http_response,
+         window
+      );
 
       that._exec_chain(that._pre_exec, [request_obj], function() {
          console.log('[' + request_id + '] starting execution...');
@@ -319,8 +319,7 @@ dommr.prototype._request_complete = function(id) {
    var request = this._active_requests[id],
        window = request.window;
 
-   window.document.implementation.removeFeature('FetchExternalResources');
-   window.document.implementation.removeFeature('ProcessExternalResources');
+   request.setFetchAndProcessScripts(false);
 
    // if we have a timeout on the extensions then stop it from
    // executing after the request has been completed
@@ -332,7 +331,6 @@ dommr.prototype._request_complete = function(id) {
 
    this._exec_chain(this._post_exec, [request], (function() {
       this._serve_html(id, window.document.innerHTML);
-
       console.log('[' + id + '] request completed');
    }).bind(this));
 
@@ -369,14 +367,9 @@ dommr.prototype._request_internal_error = function(id, error) {
  * @param {String} html_content The HTML content
  */
 dommr.prototype._serve_html = function(request_id, html_content) {
-   var request = this._active_requests[request_id],
-       response = request.response;
+   var request = this._active_requests[request_id];
 
-   response.setHeader('Content-Type', 'text/html; charset=utf-8');
-   response.setHeader('Content-Length', html_content.length);
-   // TODO: Also change the status code when used by request_internal_error?
-   response.end(html_content, 'utf8');
-
+   request.send_html(html_content);
    request.window.close();
 
    console.log('[' + request_id + '] request sent');
@@ -415,12 +408,10 @@ dommr.prototype._serve_script = function(match, request, response) {
  * @param window
  */
 dommr.prototype._execute_scripts = function(request_id, window) {
-   var scripts = this._template.server_scripts;
+   var scripts = this._template.server_scripts,
+       request_obj = this._active_requests[request_id];
 
-   window.document.implementation.addFeature('FetchExternalResources', 'script');
-   window.document.implementation.addFeature('ProcessExternalResources', 'script');
-
-   var request_obj = this._active_requests[request_id];
+   request_obj.setFetchAndProcessScripts(true);
 
    setTimeout(this._execute_script.bind(this, request_obj, window, scripts, 0), 0);
 };
@@ -492,13 +483,13 @@ dommr.prototype._request_script_error = function(id, error, script) {
 };
 
 
-dommr.prototype._build_location = function(request, data) {
-   var url = request.url,
-       location = new String("http://" + request.headers.host + url);
+dommr.prototype._build_location = function(http_request, data) {
+   var url = http_request.url,
+       location = new String("http://" + http_request.headers.host + url);
 
    location.hash = '';  // need to address
-   location.host = request.headers.host;
-   location.href = "http://" + request.headers.host + url;
+   location.host = http_request.headers.host;
+   location.href = "http://" + http_request.headers.host + url;
    location.pathname = url;
    location.protocol = 'http:';
 
@@ -508,14 +499,14 @@ dommr.prototype._build_location = function(request, data) {
       location.search = "";
    }
 
-   var split_host = request.headers.host.split(':');
+   var split_host = http_request.headers.host.split(':');
    location.hostname = split_host[0];
    location.port = split_host[1];
 
    // extra properties
-   location.method = request.method.toUpperCase();
+   location.method = http_request.method.toUpperCase();
 
-   if (request.headers['content-type'] == 'application/x-www-form-urlencoded' && data) {
+   if (http_request.headers['content-type'] == 'application/x-www-form-urlencoded' && data) {
       var params = data.toString('utf8'), match;
 
       location.form = { };
