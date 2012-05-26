@@ -1,8 +1,7 @@
-(function(Backbone) {
+(function() {
 
-   var Models = { };
-
+   var Models = {};
 
    window.Models = Models;
 
-})(Backbone);
+})();

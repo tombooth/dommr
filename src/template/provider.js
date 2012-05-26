@@ -1,10 +1,14 @@
-
-
 var fs = require('fs'),
     path = require('path'),
+    EventEmitter = require('events').EventEmitter,
     Script = require('../script.js');
 
 
+/**
+ * @constructor
+ * @param dir
+ * @param options
+ */
 function TemplateProvider(dir, options) {
 
    options = options || { };
@@ -19,7 +23,6 @@ function TemplateProvider(dir, options) {
    console.log('Loading templates...');
 
    var parse_dir = this._parse_template_directory.bind(this, dir, this._namespace);
-   
    parse_dir();
    fs.watchFile(dir, { interval: 100 }, parse_dir);
 
@@ -27,7 +30,7 @@ function TemplateProvider(dir, options) {
 }
 
 
-require('util').inherits(TemplateProvider, require('events').EventEmitter);
+require('util').inherits(TemplateProvider, EventEmitter);
 
 
 TemplateProvider.prototype._templates = null;
@@ -55,7 +58,11 @@ TemplateProvider.prototype.register = function(dommr) {
 
 };
 
-
+/**
+ * Called periodically to check the template directory
+ * @param dir The directory to check
+ * @param {String} [namespace=':']
+ */
 TemplateProvider.prototype._parse_template_directory = function(dir, namespace) {
 
    var files = fs.readdirSync(dir),
@@ -83,29 +90,29 @@ TemplateProvider.prototype._unescape = function(code) {
 };
 
 TemplateProvider.prototype._build_template_function = function(str) {
-   var c  = this._settings,
+   // TODO: There must be another way to do this?
+   var c = this._settings,
        unescape = this._unescape,
        no_match = /.^/,
-       tmpl = 'var __p=[],print=function(){__p.push.apply(__p,arguments);};' +
-              'with(obj||{}){__p.push(\'' +
-              str.replace(/\\/g, '\\\\')
-                 .replace(/'/g, "\\'")
-                 .replace(c.escape || no_match, function(match, code) {
-                   return "',window.template.escape(" + unescape(code) + "),'";
-                 })
-                 .replace(c.interpolate || no_match, function(match, code) {
-                   return "'," + unescape(code) + ",'";
-                 })
-                 .replace(c.evaluate || no_match, function(match, code) {
-                   return "');" + unescape(code).replace(/[\r\n\t]/g, ' ') + ";__p.push('";
-                 })
-                 .replace(/\r/g, '\\r')
-                 .replace(/\n/g, '\\n')
-                 .replace(/\t/g, '\\t')
-                 + "');}return __p.join('');",
-       func = new Function('obj', tmpl);
+       source = 'var __p=[],print=function(){__p.push.apply(__p,arguments);};' +
+           'with(obj||{}){__p.push(\'' +
+           str.replace(/\\/g, '\\\\')
+               .replace(/'/g, "\\'")
+               .replace(c.escape || no_match, function(match, code) {
+              return "',window.template.escape(" + unescape(code) + "),'";
+           })
+               .replace(c.interpolate || no_match, function(match, code) {
+              return "'," + unescape(code) + ",'";
+           })
+               .replace(c.evaluate || no_match, function(match, code) {
+              return "');" + unescape(code).replace(/[\r\n\t]/g, ' ') + ";__p.push('";
+           })
+               .replace(/\r/g, '\\r')
+               .replace(/\n/g, '\\n')
+               .replace(/\t/g, '\\t')
+           + "');}return __p.join('');";
 
-   return func;
+   return new Function('obj', source);
 };
 
 TemplateProvider.prototype._attach_templates = function(request, done) {
@@ -117,12 +124,12 @@ TemplateProvider.prototype._attach_templates = function(request, done) {
    }).bind(null, this._templates);
 
    request.window.template.escape = function(string) {
-      return (''+string).replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;')
-                        .replace(/"/g, '&quot;')
-                        .replace(/'/g, '&#x27;')
-                        .replace(/\//g,'&#x2F;');
+      return ('' + string).replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#x27;')
+          .replace(/\//g, '&#x2F;');
    };
 
    done();
@@ -131,12 +138,13 @@ TemplateProvider.prototype._attach_templates = function(request, done) {
 
 TemplateProvider.prototype._include_templates = function(template) {
    var templates = this._templates,
-       templates_source = Object.keys(templates).map(function(t) { return '"' + t + '": ' + templates[t].toString() }),
+       templates_source = Object.keys(templates).map(function(t) {
+          return '"' + t + '": ' + templates[t].toString()
+       }),
        out = this._client_script.replace(/{{templates}}/, templates_source.join(',\n'));
 
    template.add_script(new Script(out, null, Script.CLIENT, Script.JAVASCRIPT));
 };
-
 
 
 module.exports = TemplateProvider;
