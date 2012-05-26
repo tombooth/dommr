@@ -25,7 +25,6 @@
       this._mounted_regex = new RegExp(this._mount_path + '/(.+)');
 
       this._intercepts = [
-         // TODO: _serve_script expects a request and response in the signature. Will this work?
          { regex: /\/script\/([a-zA-Z0-9]+)/, fn: this._serve_script.bind(this) }
       ];
 
@@ -159,7 +158,7 @@
                }
             }
 
-            // TODO: served will only be set to the return value of the last intercept. Is this intended?
+            // return the value of the first matching intercept that could respond
             if (!served) {
                response.end();
             }
@@ -205,9 +204,8 @@
          window.navigator = that._build_navigator(http_request);
 
          window.history = {
-            // TODO: Intended as noop?
-            pushState: function() {
-            }
+            // don't want to move about history on the server but backbone needs it to exist
+            pushState: function() {}
          };
 
          window.XMLHttpRequest = function() {
@@ -330,7 +328,7 @@
       dommr.log(request_id, 'Finished execution');
 
       this._exec_chain(this._post_exec, [request_obj], (function() {
-         this._serve_html(request_obj, window.document.innerHTML);
+         this._serve_html(request_obj, window.document.innerHTML, 200);
          dommr.log(request_id, 'Request completed');
       }).bind(this));
 
@@ -353,14 +351,14 @@
       }
 
       // TODO: _error_template_html is not defined
-      this._serve_html(request_obj, this._error_template_html.replace('{{error_message}}', error.toString()));
+      this._serve_html(request_obj, this._error_template_html.replace('{{error_message}}', error.toString()), 500);
 
       dommr.log(id, "Request completed with an error");
 
    };
 
    dommr.log = function(id, message) {
-      console.log('Dommr: [' + id + ']', message);
+      console.log('Dommr: [' + id + '][' + new Date() + ']', message);
    };
 
 
@@ -369,13 +367,14 @@
     * then removes the request from the active requests array.
     * @param {Request} request_obj A request object
     * @param {String} html_content The HTML content
+    * @param {Number} response_status The HTTP response status
     */
-   dommr.prototype._serve_html = function(request_obj, html_content) {
+   dommr.prototype._serve_html = function(request_obj, html_content, response_status) {
 
-      request_obj.send_html(html_content);
+      request_obj.send_html(html_content, response_status);
       request_obj.window.close();
 
-      dommr.log(request_obj.id, "Request sent");
+      dommr.log(request_obj.id, "Request sent. Total time=" + request_obj.get_total_time());
 
       delete this._active_requests[request_obj.id];
       this.extensions.remove_all(request_obj.id);
@@ -384,7 +383,6 @@
 
 
    /**
-    * // TODO: This has different signature to _serve_html
     * Pushes a script as the response to a given request
     * @param match
     * @param {HttpRequest} http_request
@@ -482,7 +480,7 @@
       var error_html = '<h1>Script Error</h1><p>An error occurred on line ' + line_num + ' of ' + script.path + '</p>';
       error_html += '<pre>' + context_lines.join('\n') + '\n\n' + error.stack + '</pre>';
 
-      this._serve_html(request_obj, error_html);
+      this._serve_html(request_obj, error_html, 500);
    };
 
 

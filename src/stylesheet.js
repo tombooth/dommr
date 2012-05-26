@@ -16,7 +16,7 @@
 
    require('util').inherits(Stylesheet, File);
 
-   // TODO: Not used?
+   // TODO: Will be used later when we have stylesheet / sass / concatenation support
    Stylesheet.ID_REGEX = /([0-9a-f]{40})\.css/;
 
    // TODO: Not used?

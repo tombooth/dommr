@@ -53,8 +53,9 @@ File.prototype.id = null;
  */
 File.prototype.load = function() {
 
-   this.check_exists();
-   this._read();
+   if (this.check_exists()) {
+      this._read();
+   }
 
    return this;
 
@@ -63,12 +64,15 @@ File.prototype.load = function() {
 /**
  * Checks the file exists and throws errors if the path is not set, or the file
  * does not exist.
+ * @return {Boolean} true, if the path exists.
  */
 File.prototype.check_exists = function() {
    if (!this.path) {
       throw Error("A path is needed in order to load a file");
    } else if (!path.existsSync(this.path)) {
       throw new Error(this.path + ' does not exist');
+   } else {
+      return true;
    }
 };
 
@@ -94,8 +98,9 @@ File.prototype.generate_id = function() {
  */
 File.prototype.watch = function() {
 
-   this.check_exists();
-   fs.watchFile(this.path, { interval: 100 }, this._file_modified.bind(this));
+   if (this.check_exists()) {
+      fs.watchFile(this.path, { interval: 100 }, this._file_modified.bind(this));
+   }
 
    return this;
 };

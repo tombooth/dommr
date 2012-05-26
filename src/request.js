@@ -13,7 +13,14 @@
       this.http_response = http_response;
       this.window = window;
       this.scripts_executing = true;
+      this.start = new Date();
    }
+
+   /**
+    * The time when the request was created.
+    * @type {Date}
+    */
+   Request.prototype.start = null;
 
    /**
     * @type {Number}
@@ -42,12 +49,20 @@
 
    Request.prototype.timeout_id = null;
 
-   Request.prototype.send_html = function(html_content) {
-      var response = this.http_response;
-      response.setHeader('Content-Type', 'text/html; charset=utf-8');
-      response.setHeader('Content-Length', html_content.length);
-      // TODO: Also change the status code when used by request_internal_error?
-      response.end(html_content, 'utf8');
+   /**
+    * Sends html content to the client
+    * @param {String} html_content The content to send as HTML
+    * @param {Number} [status_code=200] The HTTP status code
+    */
+   Request.prototype.send_html = function(html_content, status_code) {
+      var response = this.http_response, headers;
+
+      headers = {
+         'Content-Type': 'text/html; charset=utf-8',
+         'Content-Length': html_content.length
+      };
+
+      response.send(html_content, status_code || 200);
    };
 
    Request.prototype.setFetchAndProcessScripts = function(shouldFetch) {
@@ -59,6 +74,13 @@
          implementation.removeFeature('FetchExternalResources');
          implementation.removeFeature('ProcessExternalResources');
       }
+   };
+
+   /**
+    * @return {Number} The amount of time in millis it has been since the request was created
+    */
+   Request.prototype.get_total_time = function() {
+      return (+ new Date()) - this.start;
    };
 
    module.exports = Request;

@@ -94,7 +94,7 @@ Template.prototype.create_document = function() {
  * Used by dommr.process_request
  */
 Template.prototype.create_window = function() {
-   return this.create_document().parentWindow;
+   return this.create_document().createWindow();
 };
 
 
@@ -134,7 +134,6 @@ Template.prototype._process_source = function() {
    var document = this.create_document(),
        script_tags, link_tags, stylesheet, scripts = [ ];
 
-   // TODO: should be document.parentWindow?
    this._window = document.createWindow();
    this.stylesheets = { };
    this.scripts = { };
@@ -154,14 +153,14 @@ Template.prototype._process_source = function() {
    link_tags = document.getElementsByTagName('link');
 
    for (i = 0,len = link_tags.length; i < len; i++) {
-      // TODO: move to Stylesheet.js?
+      // TODO: move to Stylesheet.js
       if (link_tags.rel = 'stylesheet') {
          stylesheet = new Stylesheet(link_tags[i], this._base_path);
          this.stylesheets[stylesheet.id] = stylesheet;
       }
    }
 
-   // TODO: will the source have changed?
+   // extensions may have manipulated the source so update it
    this.source = document.innerHTML;
 
 };
