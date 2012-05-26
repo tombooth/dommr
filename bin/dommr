@@ -1,0 +1,57 @@
+#!/usr/bin/env node
+
+var cli = require('cli'),
+    exec = require('child_process').exec,
+    path = require('path');
+
+var commands = {
+
+   create: function(args, options) {
+
+      var directory = args[0];
+
+      if (!directory) {
+         console.log("Cannot start, you need to provide the path to the webapp directory, eg. 'template-project'");
+         return;
+      }
+
+      var target_path = path.resolve(process.cwd(), directory),
+          source_path = __dirname + '/template-project/*';
+
+      console.log("Creating " + directory + " from template at " + target_path);
+
+      exec('cp -r ' + source_path + ' ' + target_path, function(err, stdout, stderr) {
+         console.log(stdout);
+         console.log(stderr);
+         console.log(err);
+      });
+
+   },
+
+   start: function(args, options) {
+
+      var directory = args[0];
+
+      if (!directory) {
+         console.log("Cannot start, you need to provide the path to the webapp directory, eg. 'template-project'");
+         return;
+      }
+
+      var target_path = path.resolve(process.cwd(), directory);
+
+      console.log("Starting " + directory + " at " + target_path);
+
+      require('./server.js').start(target_path, options.port);
+   }
+
+};
+
+cli.parse({
+   port: ['p', 'Set the port to bind the webserver to', 'number', 8080]
+}, [
+   'create',
+   'start'
+]);
+
+
+cli.main(commands[cli.command]);

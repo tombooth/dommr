@@ -1,56 +1,85 @@
-
 var path = require('path'),
     fs = require('fs'),
     jsdom = require('jsdom'),
     Script = require('./script.js'),
+    File = require('./file.js'),
     Stylesheet = require('./stylesheet.js');
 
-
-
+/**
+ * @constructor
+ * @param {String} file_path
+ * @param mount_path
+ */
 function Template(file_path, mount_path) {
-
    this.path = file_path;
    this._base_path = path.dirname(file_path);
    this._mount_path = mount_path;
-
 }
 
-
-require('util').inherits(Template, require('./file.js'));
-
-
-Template.prototype.stylesheets = null;
-
-Template.prototype.scripts = null;
-
-Template.prototype.server_scripts = null;
-
-Template.prototype.client_scripts = null;
-
+require('util').inherits(Template, File);
 
 Template.prototype._base_path = null;
 
 Template.prototype._mount_path = null;
 
+/**
+ * The file path
+ * @type {String}
+ */
+Template.prototype.path = null;
+
+/**
+ * A map of all the stylesheets
+ * @type {Object}
+ */
+Template.prototype.stylesheets = null;
+
+/**
+ * A map of all the scripts
+ * @param {Object}
+ */
+Template.prototype.scripts = null;
+
+/**
+ * A list of scripts that run only on the server
+ * @param script
+ */
+Template.prototype.server_scripts = null;
+
+/**
+ * A list of scripts that run only on the client
+ * @param script
+ */
+Template.prototype.client_scripts = null;
+
 Template.prototype._window = null;
 
-
+/**
+ * Registers a script on the template
+ * @param {Script} script
+ */
 Template.prototype.add_script = function(script) {
 
    this.scripts[script.id] = script;
 
-   (script.target == Script.SERVER || script.target == Script.BOTH) && this.server_scripts.push(script);
-   
+   if (script.target == Script.SERVER || script.target == Script.BOTH) {
+      this.server_scripts.push(script);
+   }
+
    if (script.target == Script.CLIENT || script.target == Script.BOTH) {
-      if (!script.tag) this._add_script_tag(script); 
+      if (!script.tag) {
+         this._add_script_tag(script);
+      }
       this.client_scripts.push(script);
    }
 
 };
 
-Template.prototype.create_window = function() {
-
-   var fresh_document = jsdom.jsdom(this.source/*''*/, null, {
+/**
+ * Creates a document from the source
+ */
+Template.prototype.create_document = function() {
+   return jsdom.jsdom(this.source/*''*/, null, {
       features: {
          FetchExternalResources: false,
          ProcessExternalResources: false,
@@ -58,13 +87,14 @@ Template.prototype.create_window = function() {
          QuerySelector: true
       }
    });
+};
 
-   /*var elem = fresh_document.importNode(this._window.document.body, true);
-   fresh_document._childNodes = [ elem ];
-   fresh_document._modified();*/
-
-   return fresh_document.parentWindow;
-
+/**
+ * Creates a document and window from the source
+ * Used by dommr.process_request
+ */
+Template.prototype.create_window = function() {
+   return this.create_document().createWindow();
 };
 
 
@@ -89,23 +119,21 @@ Template.prototype._add_script_tag = function(script) {
       first_tag.parentNode.insertBefore(tag, first_tag);
    } else {
       document.body.appendChild(tag);
-   } 
+   }
 
    this.source = document.innerHTML;
 
 };
 
+/**
+ * Called when the file is ready. Loads all the scripts and style sheets
+ * and stores them as instances.
+ */
 Template.prototype._process_source = function() {
 
-   var document = jsdom.jsdom(this.source, null, {
-          features: {
-             FetchExternalResources: false,
-             ProcessExternalResources: false,
-             MutationEvents: false,
-             QuerySelector: true
-          }
-       }), script_tags, link_tags, stylesheet, scripts = [ ];
-   
+   var document = this.create_document(),
+       script_tags, link_tags, stylesheet, scripts = [ ];
+
    this._window = document.createWindow();
    this.stylesheets = { };
    this.scripts = { };
@@ -124,18 +152,18 @@ Template.prototype._process_source = function() {
 
    link_tags = document.getElementsByTagName('link');
 
-   for (i = 0, len = link_tags.length; i < len; i++) {
+   for (i = 0,len = link_tags.length; i < len; i++) {
+      // TODO: move to Stylesheet.js
       if (link_tags.rel = 'stylesheet') {
          stylesheet = new Stylesheet(link_tags[i], this._base_path);
-
          this.stylesheets[stylesheet.id] = stylesheet;
       }
    }
 
+   // extensions may have manipulated the source so update it
    this.source = document.innerHTML;
 
 };
-
 
 
 module.exports = Template;

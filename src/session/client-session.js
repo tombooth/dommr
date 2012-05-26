@@ -1,4 +1,3 @@
-
 (function(payload) {
 
    window.session.load = function(obj) {
@@ -44,7 +43,6 @@
       xhr.send(JSON.stringify({ key: key, value: val}));
 
    }
-
 
    window.session.load(payload);
 

@@ -1,13 +1,13 @@
-
-(function($, _, Backbone, Models, Views) {
+(function($, Backbone, Models, Views) {
 
    var App = Backbone.Router.extend({
       routes: {
-         '*': 'index'
+         '.*': 'index'
       },
 
-      index: function() { 
-      }, 
+      index: function() {
+          console.log("Index", arguments);
+      }
 
    });
 
@@ -15,4 +15,4 @@
 
    Backbone.history.start({ pushState: true });
 
-})($, _, Backbone, Models, Views);
+})(jQuery, Backbone, Models, Views);
