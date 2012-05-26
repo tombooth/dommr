@@ -5,6 +5,7 @@
        jsdom = require('jsdom'),
        uuid = require('node-uuid'),
        Template = require('./template.js'),
+       ExtensionManager = require('./extensionmanager.js'),
        Script = require('./script.js'),
        Request = require('./request.js'),
        EventEmitter = require('events').EventEmitter,
@@ -28,9 +29,8 @@
          { regex: /\/script\/([a-zA-Z0-9]+)/, fn: this._serve_script.bind(this) }
       ];
 
-      this._registered_extensions = [ 'scripts' ];
-      this._active_extensions = { };
-      this._inactive_extensions = { };
+      this.extensions = new ExtensionManager([ 'scripts' ]);
+
       this._active_requests = { };
       this._pre_exec = [ ];
       this._post_exec = [ ];
@@ -50,14 +50,13 @@
 
    dommr.Template = require('./template/provider.js');
 
-
    dommr.prototype._active_requests = null;
 
-   dommr.prototype._registered_extensions = null;
-
-   dommr.prototype._active_extensions = null;
-
-   dommr.prototype._inactive_extensions = null;
+   /**
+    * Manages the extensions (scripts by default, but also timeouts and user defined things)
+    * @type {ExtensionManager}
+    */
+   dommr.prototype.extensions = null;
 
    /**
     *
@@ -90,9 +89,9 @@
    /**
     * Registers an extension
     * // TODO: How/Where is this used?
-    * @param extension
+    * @param {Object} extension
     */
-   dommr.prototype.register = function(extension) {
+   dommr.prototype.register_extension = function(extension) {
 
       if (!extension.register) {
          throw new Error('Not a valid dommr extention');
@@ -103,7 +102,7 @@
       extension.on('done', this._extension_done.bind(this, extension));
       extension.on('error', this._extension_error.bind(this, extension));
 
-      this._registered_extensions.push(extension);
+      this.extensions.register(extension);
 
       return this;
 
@@ -185,9 +184,7 @@
 
       dommr.log(request_id, 'Request starting: ' + http_request.url);
 
-      //make the inactive extensions a copy of the registered extensions
-      this._inactive_extensions[request_id] = this._registered_extensions.slice(0);
-      this._active_extensions[request_id] = [ ];
+      this.extensions.prepare_for_request(request_id);
 
       http_request.on('data', function(d) {
          data = (data) ? data + d : d;
@@ -242,40 +239,34 @@
       });
    };
 
+   /**
+    * Moves an extension out from the inactive list and puts it into the active list
+    * @param {Object|String} extension The extension object
+    * @param {Number} request_id The id of the request
+    */
    dommr.prototype._extension_working = function(extension, request_id) {
-      var index = this._inactive_extensions[request_id].indexOf(extension);
+      var extension_name = ((extension.substr) ? extension : extension.constructor.name);
 
-      if (index >= 0) {
-         dommr.log(request_id, ((extension.substr) ? extension : extension.constructor.name) + ' is working');
-         this._inactive_extensions[request_id].splice(index, 1);
+      if (this.extensions.activate_extension(request_id, extension)) {
+         dommr.log(request_id, extension_name + ' is working');
+      } else {
+         dommr.log(request_id, extension_name + ' was not a registered extension when this request was started');
       }
 
-      this._active_extensions[request_id].push(extension);
    };
 
-   /**
-    *
-    * @param extension
-    * @param {Number} request_id
-    */
    dommr.prototype._extension_done = function(extension, request_id) {
-      var active_extension = this._active_extensions[request_id],
-          index = active_extension.indexOf(extension);
 
-      if (index >= 0) {
-         active_extension.splice(index, 1);
+      var extension_name = ((extension.substr) ? extension : extension.constructor.name);
+
+      if (this.extensions.finish_active(request_id, extension)) {
+         dommr.log(request_id, extension_name + ' is done');
       }
 
-      index = active_extension.indexOf(extension);
-
-      if (index < 0) {
-         dommr.log(request_id, ((extension.substr) ? extension : extension.constructor.name) + ' is done');
-         active_extension.push(extension);
-      }
-
-      if (!active_extension.scripts_executing && active_extension.length === 0) {
+      if (!this._active_requests[request_id].scripts_executing && this.extensions.active[request_id].length === 0) {
          this._request_complete(request_id);
       }
+      
    };
 
    dommr.prototype._extension_error = function(extension, id, error) {
@@ -387,8 +378,8 @@
       dommr.log(request_obj.id, "Request sent");
 
       delete this._active_requests[request_obj.id];
-      delete this._active_extensions[request_obj.id];
-      delete this._inactive_extensions[request_obj.id];
+      this.extensions.remove_all(request_obj.id);
+
    };
 
 
@@ -562,7 +553,7 @@
          var timeout_id,
              id = 'timeout:' + uuid();
 
-         that._inactive_extensions[request_id].push(id);
+         that.extensions.inactive[request_id].push(id);
          that._extension_working(id, request_id);
 
          timeout_id = setTimeout(function() {
@@ -589,7 +580,7 @@
          var interval_id,
              id = 'interval:' + uuid();
 
-         that._inactive_extensions[request_id].push(id);
+         that.extensions.inactive[request_id].push(id);
          that._extension_working(id, request_id);
 
          interval_id = setInterval(function() {
@@ -624,7 +615,7 @@
 
          if (elem.nodeName === 'SCRIPT') {
             id = 'script' + uuid();
-            that._inactive_extensions[request_id].push(id);
+            that.extensions.inactive[request_id].push(id);
             that._extension_working(id, request_id);
 
             elem.addEventListener('load', function(ev) {
