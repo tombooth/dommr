@@ -126,6 +126,20 @@ Template.prototype._add_script_tag = function(script) {
 };
 
 /**
+ * Given an object mapping ids to files (such as this.stylesheet/script)
+ * unwatches all the files mapped
+ * @private
+ * @param [Object] file_object Object with a id->file mapping
+ */
+Template.prototype._unwatch_all = function(file_object) {
+
+   if (file_object) {
+      Object.keys(file_object).forEach(function(id) { file_object[id].unwatch(); });
+   }
+
+};
+
+/**
  * Called when the file is ready. Loads all the scripts and style sheets
  * and stores them as instances.
  */
@@ -133,6 +147,10 @@ Template.prototype._process_source = function() {
 
    var document = this.create_document(),
        script_tags, link_tags, stylesheet, scripts = [ ];
+
+   // if scripts and style sheets have already been loaded then unwatch all the files
+   this._unwatch_all(this.stylesheets);
+   this._unwatch_all(this.scripts);
 
    this._window = document.createWindow();
    this.stylesheets = { };
