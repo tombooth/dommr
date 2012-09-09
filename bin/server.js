@@ -14,7 +14,7 @@
 
          server.use('/scripts', express.static(path + '/scripts'));
          server.use('/css', express.static(path + '/css'));
-         server.use('/images', express.static(path + '/images'));
+         server.use('/img', express.static(path + '/img'));
          server.use(express.favicon(path + '/favicon.ico'));
 
          path += '/index.html';
