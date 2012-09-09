@@ -294,6 +294,7 @@ XMLHttpRequest.prototype._report = function(xhr, state) {
    }
 }
 
+XMLHttpRequest.prototype.withCredentials = true;
 
 
 module.exports = XMLHttpRequest;
