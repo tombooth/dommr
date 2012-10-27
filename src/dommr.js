@@ -521,10 +521,12 @@
       if (http_request.headers['content-type'] == 'application/x-www-form-urlencoded' && data) {
          var params = data.toString('utf8'), match;
 
+         console.log(params);
+
          location.form = { };
 
-         while (match = /([a-zA-z0-9]+)=([a-zA-Z0-9]+)/.exec(params)) {
-            location.form[match[1]] = match[2];
+         while (match = /([a-zA-z0-9%\.]+)=([a-zA-Z0-9%\.]+)/.exec(params)) {
+            location.form[match[1]] = decodeURIComponent(match[2]);
 
             params = params.substr(match.index + match[0].length);
          }
