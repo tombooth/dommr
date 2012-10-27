@@ -16,6 +16,12 @@ util.inherits(File, require('events').EventEmitter);
 
 
 /**
+ * Regular expression used to determine whether the file is remote
+ * @type {Regexp}
+ */
+File.REMOTE_REGEXP = /http[s]*:/;
+
+/**
  * A custom resolve function which should match path.resolve for all cases apart from
  * where rel_path starts with a / then it has a . added before it and then passed to path.resolve.
  * This is done so that we can use absolute paths in our template html for scripts and
@@ -26,6 +32,15 @@ util.inherits(File, require('events').EventEmitter);
  */
 File.resolve = function(base_path, rel_path) {
    return path.resolve(base_path, ((rel_path.charAt(0) === '/') ? '.' : '') + rel_path);
+};
+
+/**
+ * Check whether the file is referencing a remote source
+ * @static
+ * @return {Boolean} true, if the file is remote
+ */
+File.is_remote = function(path) {
+   return File.REMOTE_REGEXP.test(path);
 };
 
 /**
@@ -53,7 +68,9 @@ File.prototype.id = null;
  */
 File.prototype.load = function() {
 
-   if (this.check_exists()) {
+   if (File.is_remote(this.path)) {
+      this._download();
+   } else if (this.check_exists()) {
       this._read();
    }
 
@@ -69,7 +86,7 @@ File.prototype.load = function() {
 File.prototype.check_exists = function() {
    if (!this.path) {
       throw Error("A path is needed in order to load a file");
-   } else if (!path.existsSync(this.path)) {
+   } else if (!fs.existsSync(this.path)) {
       throw new Error(this.path + ' does not exist');
    } else {
       return true;
@@ -93,12 +110,13 @@ File.prototype.generate_id = function() {
 
 /**
  * After validating the files existence it will watch the file and update this object
- * any time the file is modified
+ * any time the file is modified. Will not update if the path is remote.
  * @return This, for chaining
  */
 File.prototype.watch = function() {
 
-   if (this.check_exists()) {
+   if (!File.is_remote(this.path) && this.check_exists()) {
+      console.log('Watching ' + this.path);
       fs.watchFile(this.path, { interval: 100 }, this._file_modified.bind(this));
    }
 
@@ -111,7 +129,10 @@ File.prototype.watch = function() {
  */
 File.prototype.unwatch = function() {
 
-   fs.unwatchFile(this.path);
+   if (this.path && !File.is_remote(this.path)) {
+      console.log('Stopped watching ' + this.path);
+      fs.unwatchFile(this.path);
+   }
 
    return this;
 };
@@ -145,6 +166,20 @@ File.prototype._read = function() {
    this.generate_id();
 
    console.log(this.constructor.name + ' loaded from ' + this.path);
+
+   this._process_source();
+
+};
+
+/**
+ * Downloads the file and generates a hash for the content
+ */
+File.prototype._download = function() {
+
+   this.source = '' + Math.random() * 100000000000; // TODO: this is where the actual magic should happen
+   this.generate_id();
+
+   console.log(this.constructor.name + ' downloaded from ' + this.path);
 
    this._process_source();
 

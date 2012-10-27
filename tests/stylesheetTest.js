@@ -8,7 +8,7 @@ var Test = module.exports,
 
 
 Test.setUp = function(cb) {
-   sinon.stub(path, 'existsSync');
+   sinon.stub(fs, 'existsSync');
    sinon.stub(fs, 'readFileSync');
    sinon.stub(fs, 'watchFile');
    sinon.stub(fs, 'unwatchFile');
@@ -17,7 +17,7 @@ Test.setUp = function(cb) {
 };
 
 Test.tearDown = function(cb) {
-   path.existsSync.restore();
+   fs.existsSync.restore();
    fs.readFileSync.restore();
    fs.watchFile.restore();
    fs.unwatchFile.restore();
@@ -33,7 +33,7 @@ Test["Path and type extracted from tag"] = function(test) {
        }, 
        stylesheet;
 
-   path.existsSync.returns(true);
+   fs.existsSync.returns(true);
    fs.readFileSync.returns(' ');
 
    stylesheet = new Stylesheet(tag, TEST_BASE_PATH);

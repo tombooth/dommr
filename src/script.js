@@ -91,11 +91,12 @@
     */
    Script.create_from_tag = function(tag, base_path) {
 
-      var script_target,
+      var src = tag.src,
+          script_target,
           source, path, target, type;
 
-      if (tag.src) {
-         path = File.resolve(base_path, tag.src);
+      if (src && !File.is_remote(src)) {
+         path = File.resolve(base_path, src);
       } else {
          console.log('Loading inline script');
          source = tag.childNodes[0].nodeValue;

@@ -8,7 +8,7 @@
    function Stylesheet(tag, base_path) {
 
       this.tag = tag;
-      this.path = File.resolve(base_path, tag.href);
+      this.path = File.is_remote(tag.href) ? tag.href : File.resolve(base_path, tag.href);
       this.type = tag.getAttribute('type');
       this.load().watch();
 
