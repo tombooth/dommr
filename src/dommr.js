@@ -622,7 +622,7 @@
          var elem = ev.target,
              id;
 
-         if (elem.nodeName === 'SCRIPT') {
+         if (elem.nodeName === 'SCRIPT' && elem.ownerDocument.implementaton.hasFeature('ProcessExternalResources')) {
             id = 'script' + uuid();
             that._inactive_extensions[request_id].push(id);
             that._extension_working(id, request_id);

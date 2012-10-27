@@ -112,13 +112,14 @@ SessionProvider.prototype._detach_session = function(d_request, done) {
 
    first_script_tag.parentNode.insertBefore(tag, first_script_tag);
 
-   session.save(function() { done(); });
+   console.log('saving');
+   session.save(function() { console.log('calling done');done(); });
 
 };
 
 SessionProvider.prototype._get_id = function(d_request) {
 
-   var cookies = d_request.request.headers.cookie,
+   var cookies = d_request.http_request.headers.cookie,
        cookie_match = SessionProvider.COOKIE_REGEX.exec(cookies),
        id;
 
@@ -126,7 +127,7 @@ SessionProvider.prototype._get_id = function(d_request) {
    else {
       id = uuid();
 
-      d_request.response.setHeader('Set-Cookie', 'sessionId=' + id + ';path=/; HttpOnly');
+      d_request.http_response.setHeader('Set-Cookie', 'sessionId=' + id + ';path=/; HttpOnly');
    }
 
    return id;

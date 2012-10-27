@@ -41,13 +41,14 @@ var commands = {
 
       console.log("Starting " + directory + " at " + target_path);
 
-      require('./server.js').start(target_path, options.port);
+      require('./server.js').start(target_path, options.port, options.session);
    }
 
 };
 
 cli.parse({
-   port: ['p', 'Set the port to bind the webserver to', 'number', 8080]
+   port: ['p', 'Set the port to bind the webserver to', 'number', 8080],
+   session: ['s', 'Includes the dommr session provider. Argument passes memcached ip:port', 'string']
 }, [
    'create',
    'start'

@@ -6,9 +6,11 @@
     * @param {String} path
     * @param {Number} port
     */
-   function start(path, port) {
-      var server = express.createServer(),
-          stat = fs.lstatSync(path);
+   function start(path, port, memcached_server) {
+      var server = express(),
+          stat = fs.lstatSync(path),
+          session_options = { },
+          dommr_instance, memcached_parts;
 
       if (stat.isDirectory()) {
 
@@ -20,7 +22,21 @@
          path += '/index.html';
       }
 
-      server.use(new dommr(path).middleware());
+      dommr_instance = new dommr(path);
+
+      if (memcached_server) {
+         if (memcached_server.indexOf(':') > 0) {
+            memcached_parts = memcached_server.split(':');
+            session_options.host = memcached_parts[0];
+            session_options.port = memcached_parts[1];
+         } else {
+            session_options.host = memcached_server;
+         }
+
+         dommr_instance.register(new dommr.Session(session_options));
+      }
+
+      server.use(dommr_instance.middleware());
 
       server.listen(port);
    }
