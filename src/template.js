@@ -148,7 +148,7 @@ Template.prototype._process_source = function() {
    var document = this.create_document(),
        script_tags, link_tags, stylesheet, scripts = [ ];
 
-   // if scripts and style sheets have already been loaded then unwatch all the files
+   // unwatch files so that we don't end up watching them multiple times
    this._unwatch_all(this.stylesheets);
    this._unwatch_all(this.scripts);
 

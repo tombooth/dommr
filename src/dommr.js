@@ -444,8 +444,7 @@
 
          dommr.log(request_obj.id, 'Finished executing inline scripts');
 
-         // as the scripts have finished executing we will given the extensions a timeout
-         // (in defined) until they will be aborted and the request completed
+         // limit the time extensions can run for, if a timeout duration has been set
          if (this._extension_timeout) {
             console.log('[' + request_obj.id + '] starting extension timeout for ' + this._extension_timeout + 'ms');
             request_obj.timeout_id = setTimeout(this.emit.bind(this, 'request:timeout', request_obj.id), this._extension_timeout);
