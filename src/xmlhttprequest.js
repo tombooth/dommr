@@ -26,7 +26,7 @@ var Url = require('url'),
 
 
 
-function XMLHttpRequest(request_id) {
+function XMLHttpRequest() {
    // Current state
    this.readyState = XMLHttpRequest.UNSENT;
 
@@ -41,9 +41,6 @@ function XMLHttpRequest(request_id) {
    this.statusText = null;
 
    this.url = '';
-
-   this._id = 'xhr:' + uuid();
-   this._req_id = request_id;
 }
 
 
@@ -285,14 +282,14 @@ XMLHttpRequest.prototype._report = function(xhr, state) {
       case 1: // xhr opened
          console.log('+ ' + xhr.url);
 
-         this.emit('working', this._id, this._req_id);
+         this.emit('working');
 
          break;
 
       case 4: // xhr done
          console.log('- ' + xhr.url);
 
-         this.emit('done', this._id, this._req_id);
+         this.emit('done');
 
          break;
    }

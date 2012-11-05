@@ -9,15 +9,17 @@
     * @param {String} path The path of the file
     * @param target
     * @param type Either Script.JAVASCRIPT or Script.COFFEESCRIPT
+    * @param {Boolean} is_static indicates whether this script should be reloaded each request
     * @param tag
     */
-   function Script(source, path, target, type, tag) {
+   function Script(source, path, target, type, is_static, tag) {
 
       this.source = source;
       this.path = path;
       this.target = target;
       this.type = type;
       this.tag = tag;
+      this.is_static = is_static;
 
       if (path && !source) {
          this.load().watch();
@@ -93,7 +95,7 @@
 
       var src = tag.src,
           script_target,
-          source, path, target, type;
+          source, path, target, type, is_static;
 
       if (src && !File.is_remote(src)) {
          path = File.resolve(base_path, src);
@@ -107,8 +109,9 @@
           script_target !== Script.CLIENT &&
           script_target !== Script.SERVER) ? Script.BOTH : script_target;
       type = tag.getAttribute('type');
+      is_static = tag.getAttribute('data-static') === 'true';
 
-      return new Script(source, path, target, type, tag);
+      return new Script(source, path, target, type, is_static, tag);
 
    };
 

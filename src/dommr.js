@@ -8,7 +8,7 @@
        Script = require('./script.js'),
        Request = require('./request.js'),
        EventEmitter = require('events').EventEmitter,
-       XMLHttpRequest = require('./xmlhttprequest');
+       WindowHire = require('./windowhire.js');
 
    /**
     * Sets options, creates a template from the path
@@ -17,6 +17,7 @@
     * @param {Object} options
     */
    function dommr(path, options) {
+
       options = options || { };
 
       this._extension_timeout = options.extension_timeout || 0;
@@ -27,7 +28,7 @@
          { regex: /\/script\/([a-zA-Z0-9]+)/, fn: this._serve_script.bind(this) }
       ];
 
-      this._registered_extensions = [ 'scripts' ];
+      this._registered_extensions = [ 'scripts', 'window' ];
       this._active_extensions = { };
       this._inactive_extensions = { };
 
@@ -38,6 +39,8 @@
       this._template = new Template(path, this._mount_path);
       this._template.on('scripts:pre', this.emit.bind(this, 'template:scripts:pre'));
       this._template.on('scripts:post', this.emit.bind(this, 'template:scripts:post'));
+
+      this._window_hire = new WindowHire(this._template);
 
    }
 
@@ -180,7 +183,6 @@
     */
    dommr.prototype._process_request = function(http_request, http_response) {
       var request_id = uuid(), // Generates a RFC4122 v1 (timestamp-based) UUID.
-          that = this,
           data;
 
       dommr.log(request_id, 'Request starting: ' + http_request.url);
@@ -192,55 +194,28 @@
       http_request.on('data', function(d) {
          data = (data) ? data + d : d;
       });
-      http_request.on('end', function() {
-
-         /*
-          * Create the window object and augment global object
-          */
-         var window = that._template.create_window();
-
-         that._add_timing(request_id, window);
-         that._add_script_loading(request_id, window);
-
-         window.console = console;
-         // todo: move this into a utility class?
-         window.location = that._build_location(http_request, data);
-         window.navigator = that._build_navigator(http_request);
-
-         window.history = {
-            // don't want to move about history on the server but backbone needs it to exist
-            pushState: function() {}
-         };
-
-         window.XMLHttpRequest = function() {
-
-            var xmlhttprequest = new XMLHttpRequest(request_id);
-
-            that._inactive_extensions[request_id].push(xmlhttprequest._id);
-
-            xmlhttprequest.once('working', that._extension_working.bind(that));
-            xmlhttprequest.once('done', that._extension_done.bind(that));
-
-            return xmlhttprequest;
-
-         };
+      http_request.on('end', (function() {
 
          // TODO: This should be in its own object so it could have
          // send methods build in as functions which would be tidier.
-         var request_obj = that._active_requests[request_id] = new Request(
-             request_id,
-             http_request,
-             http_response,
-             window
+         var window = this._window_hire.rent(http_request, data),
+             request_obj = this._active_requests[request_id] = new Request(
+                request_id,
+                http_request,
+                http_response,
+                window
              );
 
-         that._exec_chain(that._pre_exec, [request_obj], function() {
-            dommr.log(request_id, 'Starting execution...');
-            that._extension_working('scripts', request_id);
-            that._execute_scripts(request_id, window);
-         });
+         window.on('working', this._extension_working.bind(this, 'window', request_id)); 
+         window.on('done', this._extension_done.bind(this, 'window', request_id)); 
 
-      });
+         this._exec_chain(this._pre_exec, [request_obj], (function() {
+            dommr.log(request_id, 'Starting execution...');
+            this._extension_working('scripts', request_id);
+            this._execute_scripts(request_id, window);
+         }).bind(this));
+
+      }).bind(this));
    };
 
    /**
@@ -259,6 +234,12 @@
       this._active_extensions[request_id].push(extension);
    };
 
+   /**
+    * Flags an extension as done. If it was the only one left outstanding then we should complete
+    * the request.
+    * @param {Object|String} extension
+    * @param {Number} request_id
+    */
    dommr.prototype._extension_done = function(extension, request_id) {
 
       var active_extension = this._active_extensions[request_id],
@@ -382,9 +363,10 @@
    dommr.prototype._serve_html = function(request_obj, html_content, response_status) {
 
       request_obj.send_html(html_content, response_status);
-      request_obj.window.close();
 
       dommr.log(request_obj.id, "Request sent. Total time=" + request_obj.get_total_time());
+
+      this._window_hire.return(request_obj.window);
 
       delete this._active_requests[request_obj.id];
       delete this._active_extensions[request_obj.id];
@@ -454,14 +436,18 @@
 
       } else {
 
+         var script = scripts[index];
+
          try {
 
-            window.run(scripts[index].source, scripts[index].path);
+            if (! script.is_static) { 
+               window.run(script.source, script.path);
+            }
 
             setTimeout(this._execute_script.bind(this, request_obj, window, scripts, index + 1), 0);
 
          } catch(ex) {
-            this._request_script_error(request_obj, ex, scripts[index]);
+            this._request_script_error(request_obj, ex, script);
          }
       }
    };
@@ -494,147 +480,6 @@
    };
 
 
-   dommr.prototype._build_location = function(http_request, data) {
-      var url = http_request.url,
-          location = new String("http://" + http_request.headers.host + url);
-
-      location.hash = '';  // need to address
-      location.host = http_request.headers.host;
-      location.href = "http://" + http_request.headers.host + url;
-      location.pathname = url;
-      location.protocol = 'http:';
-
-      if (url.indexOf("?") > -1) {
-         location.search = url.substring(url.indexOf("?"));
-      } else {
-         location.search = "";
-      }
-
-      var split_host = http_request.headers.host.split(':');
-      location.hostname = split_host[0];
-      location.port = split_host[1];
-
-      // extra properties
-      location.method = http_request.method.toUpperCase();
-
-      if (http_request.headers['content-type'] == 'application/x-www-form-urlencoded' && data) {
-         var params = data.toString('utf8'), match;
-
-         console.log(params);
-
-         location.form = { };
-
-         while (match = /([a-zA-z0-9%\.]+)=([a-zA-Z0-9%\.]+)/.exec(params)) {
-            location.form[match[1]] = decodeURIComponent(match[2]);
-
-            params = params.substr(match.index + match[0].length);
-         }
-      }
-
-      return location;
-   };
-
-   /**
-    * Builds a simple navigator
-    * @param request
-    */
-   dommr.prototype._build_navigator = function(request) {
-      var navigator = { };
-
-      navigator.server = true;
-      navigator.userAgent = 'WebKit/1.0';
-
-      return navigator;
-   };
-
-   /**
-    * Augments the standard window timeout and interval features
-    * to hook into the extensions.
-    * @param request_id
-    * @param window
-    */
-   dommr.prototype._add_timing = function(request_id, window) {
-
-      var running_timeouts = [ ],
-          running_intervals = [ ],
-          that = this;
-
-      window.setTimeout = function(fn, timeout) {
-         var timeout_id,
-             id = 'timeout:' + uuid();
-
-         that._inactive_extensions[request_id].push(id);
-         that._extension_working(id, request_id);
-
-         timeout_id = setTimeout(function() {
-            fn.apply(window, arguments);
-            that._extension_done(id, request_id);
-         }, timeout);
-
-         running_timeouts[id] = timeout_id;
-
-         return id;
-      };
-
-      window.clearTimeout = function(id) {
-         var timeout_id = running_timeouts[id];
-
-         if (timeout_id) {
-            clearTimeout(timeout_id);
-
-            that._extension_done(id, request_id);
-         }
-      };
-
-      window.setInterval = function(fn, interval) {
-         var interval_id,
-             id = 'interval:' + uuid();
-
-         that._inactive_extensions[request_id].push(id);
-         that._extension_working(id, request_id);
-
-         interval_id = setInterval(function() {
-            fn.apply(window, arguments);
-         }, interval);
-
-         running_intervals[id] = interval_id;
-
-         return id;
-      };
-
-      window.clearInterval = function(id) {
-         var interval_id = running_intervals[id];
-
-         if (interval_id) {
-            clearInterval(interval_id);
-
-            that._extension_done(id, request_id);
-         }
-      };
-
-   };
-
-
-   dommr.prototype._add_script_loading = function(request_id, window) {
-
-      var that = this;
-
-      window.document.addEventListener('DOMNodeInserted', function(ev) {
-         var elem = ev.target,
-             id;
-
-         if (elem.nodeName === 'SCRIPT' && elem.ownerDocument.implementaton.hasFeature('ProcessExternalResources')) {
-            id = 'script' + uuid();
-            that._inactive_extensions[request_id].push(id);
-            that._extension_working(id, request_id);
-
-            elem.addEventListener('load', function(ev) {
-               that._extension_done(id, request_id);
-            });
-         }
-      });
-
-   };
 
    module.exports = dommr;
 

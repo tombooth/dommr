@@ -75,29 +75,6 @@ Template.prototype.add_script = function(script) {
 
 };
 
-/**
- * Creates a document from the source
- */
-Template.prototype.create_document = function() {
-   return jsdom.jsdom(this.source/*''*/, null, {
-      features: {
-         FetchExternalResources: false,
-         ProcessExternalResources: false,
-         MutationEvents: '2.0',
-         QuerySelector: true
-      }
-   });
-};
-
-/**
- * Creates a document and window from the source
- * Used by dommr.process_request
- */
-Template.prototype.create_window = function() {
-   return this.create_document().createWindow();
-};
-
-
 Template.prototype._add_script_tag = function(script) {
    var document = this._window.document,
        tag = script.tag = document.createElement('script'),
@@ -145,8 +122,16 @@ Template.prototype._unwatch_all = function(file_object) {
  */
 Template.prototype._process_source = function() {
 
-   var document = this.create_document(),
-       script_tags, link_tags, stylesheet, scripts = [ ];
+   var document, script_tags, link_tags;
+
+   document = jsdom.jsdom(this.source, null, {
+      features: {
+         FetchExternalResources: false,
+         ProcessExternalResources: false,
+         MutationEvents: '2.0',
+         QuerySelector: true
+      }
+   });
 
    // unwatch files so that we don't end up watching them multiple times
    this._unwatch_all(this.stylesheets);
