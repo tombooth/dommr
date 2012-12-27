@@ -196,8 +196,6 @@
       });
       http_request.on('end', (function() {
 
-         // TODO: This should be in its own object so it could have
-         // send methods build in as functions which would be tidier.
          var window = this._window_hire.rent(http_request, data),
              request_obj = this._active_requests[request_id] = new Request(
                 request_id,
