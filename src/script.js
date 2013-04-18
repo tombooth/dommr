@@ -97,9 +97,9 @@
           script_target,
           source, path, target, type, is_static;
 
-      if (src && !File.is_remote(src)) {
-         path = File.resolve(base_path, src);
-      } else {
+      if (src) {
+         path = File.is_remote(src) ? src : File.resolve(base_path, src);
+      } else if (tag.childNodes.length > 0) {
          console.log('Loading inline script');
          source = tag.childNodes[0].nodeValue;
       }

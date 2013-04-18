@@ -19,7 +19,7 @@ util.inherits(File, require('events').EventEmitter);
  * Regular expression used to determine whether the file is remote
  * @type {Regexp}
  */
-File.REMOTE_REGEXP = /http[s]*:/;
+File.REMOTE_REGEXP = /(http[s]*:)?\/\//;
 
 /**
  * A custom resolve function which should match path.resolve for all cases apart from
