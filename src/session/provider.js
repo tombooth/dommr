@@ -51,17 +51,23 @@ SessionProvider.prototype._put_in_session = function(match, request, response) {
    var id = match[1],
        payload;
 
-   request.on('data', function(data) { payload = (payload) ? payload + data : data; });
-   request.on('end', (function() { 
-      var key_val = JSON.parse(payload.toString('utf8')),
-          session = new Session(id, this._memcached_client, this._expiry);
+   if (request.body) this._set_key_val(id, request.body, function() { response.end(); });
+   else {
+      request.on('data', function(data) { console.log('data in'); payload = (payload) ? payload + data : data; });
+      request.on('end', (function() { 
+         payload && this._set_key_val(id, JSON.parse(payload.toString('utf8')), function() { response.end(); });
+      }).bind(this));
+   }
 
-      console.log('setting', key_val, id);
+};
 
-      session.set(key_val.key, key_val.value);
-      session.save(function() { response.end(); });
-   }).bind(this));
+SessionProvider.prototype._set_key_val = function(id, key_val, callback) {
+   var session = new Session(id, this._memcached_client, this._expiry);
 
+   console.log('setting', key_val, id);
+
+   session.set(key_val.key, key_val.value);
+   session.save(callback);
 };
 
 

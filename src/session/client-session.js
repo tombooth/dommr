@@ -11,7 +11,7 @@
    };
 
    window.session.get = function(key) {
-      return window.sessionStorage.getItem(key);
+      return JSON.parse(window.sessionStorage.getItem(key));
    };
 
    window.session.set = function(key, val, not_saved) {
@@ -21,13 +21,13 @@
 
          for (k in key) {
             if (key[k] === null) window.sessionStorage.removeItem(k);
-            else window.sessionStorage.setItem(k, key[k]);
+            else window.sessionStorage.setItem(k, JSON.stringify(key[k]));
             
             if (!window.navigator.server && !not_saved) _set_server(k, key[k]);
          }
       } else {
          if (val === null) window.sessionStorage.removeItem(key);
-         else window.sessionStorage.setItem(key, val);
+         else window.sessionStorage.setItem(key, JSON.stringify(val));
 
          if (!window.navigator.server && !not_saved) _set_server(key, val);
       }

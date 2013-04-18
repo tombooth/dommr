@@ -1,9 +1,3 @@
-
-
-
-
-
-
 /**
  * This is the server side implmentation of the window.session object.
  * It is used by domesetique when a request is made as well as when
